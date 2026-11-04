@@ -1,6 +1,6 @@
-# Exam lab · ADALINE and MADALINE
+# Exam lab · ADALINE, MADALINE and Hebbian Learning
 
-A local desktop worksheet for the supplied **ADALINE and MADALINE Rule I (MRI)** algorithms.
+A local desktop worksheet for the supplied **ADALINE, MADALINE Rule I (MRI), and Hebbian Learning** algorithms.
 **Rust performs all training, stopping checks, SSE and predictions.** Python's
 standard-library Tk interface presents the inputs and worked calculations.
 No third-party Python packages, Rust crates, network service, or API key is needed.
@@ -21,7 +21,7 @@ distribution's `python3-tk` package. `python3 -m tkinter` checks the Tk installa
 
 ## Use
 
-1. Select **ADALINE** or **MADALINE (MRI)** in the algorithm selector, then choose
+1. Select **ADALINE**, **MADALINE (MRI)**, or **Hebbian Learning** in the algorithm selector, then choose
    **AND, OR, NAND, NOR, XOR, NOT**, or edit the training pairs directly.
    Each row contains `x1, x2, …, target`. Targets must be **−1 or +1**.
    Presets default to bipolar inputs; binary inputs are an explicit alternative.
@@ -39,12 +39,16 @@ distribution's `python3-tk` package. `python3 -m tkinter` checks the Tk installa
    at any time. Switching algorithms resets trainable initial
    values to zeros for ADALINE or seeded random values for MADALINE; the dataset
    stays in the editor. Loading a MADALINE preset also uses seeded random values.
-3. Press **Run ADALINE / Run MADALINE** or **Ctrl/⌘+Enter**. Compilation and training run in a
+   **Hebbian Learning** starts all weights and bias at zero on every run, as in
+   the notes. These initial fields are read-only, and random initialization,
+   tolerance, and maximum epochs are hidden. Enter its positive learning rate **η**;
+   the procedure makes exactly one ordered pass, followed by verification.
+3. Press **Run** for your selected algorithm or **Ctrl/⌘+Enter**. Compilation and training run in a
    worker; **Cancel calculation** terminates the process and retains the previous
    completed result. Editing inputs while a run is active affects the next run.
 4. **Worked steps** substitutes the numbers into every formula, one pattern at a
    time. Use the buttons, slider or **Alt+Left/Right**. End-of-epoch patterns show
-   the exact stopping test.
+   the exact stopping test, or the final verification for Hebbian Learning.
 5. **Full training trace** shows all inputs, old weights, net input, class, error,
    deltas and new weights. Select a row to update the worked calculation;
    double-click to open it. Use pagination or jump to an epoch. **Export all CSV**
@@ -52,6 +56,8 @@ distribution's `python3-tk` package. `python3 -m tkinter` checks the Tk installa
 6. **Epochs & learning** shows SSE and largest-update charts plus a paginated
    table of every complete epoch. Double-click an epoch to inspect its last
    pattern. **Export epochs CSV** saves its full history.
+   Hebbian results rename this tab **Pass summary** and export its single
+   completed pass with **Export pass CSV**.
 7. **Final model** shows the separating equation and fixed-model predictions.
    **Algorithm** documents the supplied steps and the meaning of each diagnostic.
 
@@ -167,6 +173,50 @@ the hidden count, every unit's state and updates, the fixed output constants
 Changing the form's hidden count leaves previously calculated results and their
 exported dimensions intact until a new run completes.
 
+## Hebbian Learning
+
+This is the supervised Hebbian procedure in the supplied Slovak notes:
+
+1. Choose **η > 0**. Initialize **every weight and bias to zero**.
+2. Visit each training pair `(x, t)` once, in its displayed order.
+3. Compute `delta_w_i = eta * x_i * t` and `delta_b = eta * t`.
+4. Add these deltas to the existing weights and bias before the next row.
+5. After that **one pass**, verify every pattern with one fixed final model.
+
+There is no prediction-error term, no skipping correctly classified patterns,
+and no tolerance/epoch loop. Every press of Run starts again from zero. Existing
+ADALINE/MADALINE initialization or stopping settings do not affect Hebbian runs.
+The shared learning-rate field retains its value when switching algorithms and
+is labeled η for Hebbian Learning.
+
+The page does not specify an activation function. Verification uses the GUI's
+existing **bipolar threshold**: `y_in = b + sum(x_i*w_i)`, then `y = +1` when
+`y_in >= 0`, otherwise `-1`. Targets are bipolar (`-1`, `+1`). Binary, bipolar,
+and custom finite real inputs are accepted, with 1–32 coordinates and up to
+128 patterns. Verification does not change the training updates.
+
+**`pass_complete`** records that all pairs were processed and verification ran.
+Classification accuracy is separate: a complete pass need not classify every
+pattern correctly. For bipolar XOR, the final weights and bias are zero and
+the zero tie predicts +1, giving 2/4 correct. The diagnostic classification SSE
+is `sum((t-y)^2)`, so each wrong bipolar prediction contributes 4.
+
+**Worked AND example:** choose bipolar AND and η = 1. In the usual row order,
+the post-update `(w1, w2, b)` values are `(1,1,1)`, `(0,2,0)`, `(1,1,-1)`, and
+`(2,2,-2)`. All four verification rows use the final `(2,2,-2)` model, producing
+linear responses `2, -2, -2, -6` and correct bipolar classifications.
+
+Worked steps substitute η, inputs and targets into every delta, then show every
+coefficient addition. The last pattern shows Step 5 verification for the entire
+dataset. The full trace CSV includes the input snapshot, zero initial model,
+and all before/delta/after coefficients. The pass CSV records its endpoint,
+accuracy and classification SSE. Both exports preserve full floating-point precision.
+
+The existing numerical guard rejects a whole unsafe pattern update, preserves
+the previously committed prefix, and reports `numerical_limit`. Such a run has
+no completed pass-summary row. Its displayed predictions describe the last
+valid partial model and are explicitly labeled as incomplete verification.
+
 ## Calculation limits
 
 To keep complete traces practical, requests support 1–32 inputs, 1–128 patterns,
@@ -180,10 +230,12 @@ in magnitude. Each compiler/training process has a two-minute timeout.
 
 - `rust_backend/src/lib.rs`: numerical implementation and hand-calculation tests.
 - `rust_backend/src/madaline.rs`: MADALINE Rule I and its branch/boundary tests.
+- `rust_backend/src/hebbian.rs`: zero-initialized, one-pass Hebbian training and verification.
 - `rust_backend/src/main.rs`: validated line protocol for the Python adapter.
 - `backend.py`: immutable run data, Rust build/process management, CSV exports.
 - `app.py`: interface, substituted formulas, navigation and canvas charts.
 - `madaline.py`, `madaline_view.py`: MADALINE run data, protocol, CSV and worked views.
+- `hebbian.py`, `hebbian_view.py`: Hebbian run data, protocol, CSV and worked views.
 - `main.py`: portable launcher. Other algorithms can be added as separate Rust
   modules and worksheet views without moving calculation loops into Python.
 
@@ -205,3 +257,6 @@ failure, and switching between both algorithms with previous results retained.
 Variable-count checks exercise 1, 3, 4, 5, 12 and 32 hidden units, later-unit
 selection, ties between later units, full-network stopping checks, output defaults,
 CSV dimensions, unambiguous coefficient names, and GUI resizing.
+Hebbian checks cover the hand-worked AND trace, target-based updates, one-pass
+completion with imperfect accuracy, custom dimensions, order, fresh zero starts,
+numerical limits, exports, and switching between all algorithm views.
