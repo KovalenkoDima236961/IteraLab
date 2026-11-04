@@ -228,6 +228,101 @@ fn run_hebbian(mut lines: std::str::Lines<'_>) -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
+fn run_perceptron(mut lines: std::str::Lines<'_>) -> Result<(), Box<dyn std::error::Error>> {
+    use core::perceptron;
+    let mode = match lines.next().ok_or("Missing perceptron mode.")? {
+        "binary" => perceptron::Mode::Binary,
+        "bipolar" => perceptron::Mode::Bipolar,
+        "band" => perceptron::Mode::ThresholdBand,
+        _ => return Err("Expected perceptron mode binary, bipolar or band.".into()),
+    };
+    let fields: Vec<&str> = lines
+        .next()
+        .ok_or("Missing perceptron options.")?
+        .split('\t')
+        .collect();
+    if fields.len() != 3 {
+        return Err("Expected learning rate, theta, maximum epochs.".into());
+    }
+    let options = perceptron::Options {
+        mode,
+        alpha: fields[0].parse()?,
+        theta: fields[1].parse()?,
+        max_epochs: fields[2].parse()?,
+    };
+    let initial = Model {
+        weights: numbers(lines.next().ok_or("Missing initial weights.")?)?,
+        bias: lines.next().ok_or("Missing initial bias.")?.parse()?,
+    };
+    let samples = samples(lines)?;
+    let result = perceptron::train(&samples, initial, options)?;
+    let mut out = BufWriter::new(io::stdout().lock());
+    let (failed_epoch, failed_pattern) = result.failed_at.unwrap_or((0, 0));
+    writeln!(
+        out,
+        "R\t{}\t{}\t{}\t{}",
+        result.status.name(),
+        result.epochs.len(),
+        failed_epoch,
+        failed_pattern
+    )?;
+    for s in &result.steps {
+        writeln!(
+            out,
+            "PS\t{}\t{}\t{:.17e}\t{}\t{:.17e}\t{:.17e}\t{:.17e}\t{:.17e}\t{:.17e}\t{}\t{}\t{}\t{}",
+            s.epoch,
+            s.pattern,
+            s.net,
+            s.output,
+            s.error,
+            s.delta_bias,
+            s.before.bias,
+            s.after.bias,
+            s.max_change,
+            vector(&s.before.weights),
+            vector(&s.delta_weights),
+            vector(&s.after.weights),
+            u8::from(s.changed)
+        )?;
+    }
+    for e in &result.epochs {
+        writeln!(
+            out,
+            "PE\t{}\t{:.17e}\t{:.17e}\t{:.17e}\t{}\t{}\t{:.17e}\t{}\t{}",
+            e.number,
+            e.max_change,
+            e.net_change,
+            e.sse,
+            e.correct,
+            vector(&e.model.weights),
+            e.model.bias,
+            e.mistakes,
+            e.updates
+        )?;
+    }
+    for (index, sample) in samples.iter().enumerate() {
+        let net = result.model.net(&sample.inputs);
+        writeln!(
+            out,
+            "P\t{}\t{:.17e}\t{}",
+            index + 1,
+            net,
+            options.mode.activate(net, options.theta)
+        )?;
+    }
+    let (sse, correct) = perceptron::diagnostics(&samples, &result.model, options);
+    writeln!(
+        out,
+        "M\t{}\t{:.17e}\t{:.17e}\t{}",
+        vector(&result.model.weights),
+        result.model.bias,
+        sse,
+        correct
+    )?;
+    out.flush()?;
+    Ok(())
+}
+
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut input = String::new();
     io::stdin().take(1_048_577).read_to_string(&mut input)?;
@@ -236,11 +331,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
     let mut lines = input.lines();
     let protocol = lines.next().ok_or("Missing protocol.")?;
+    if protocol == "PERCEPTRON1" {
+        return run_perceptron(lines);
+    }
     if protocol == "HEBBIAN1" {
         return run_hebbian(lines);
     }
     if protocol != "ADALINE1" && protocol != "MADALINE2" {
-        return Err("Expected ADALINE1, MADALINE2 or HEBBIAN1 request.".into());
+        return Err("Expected ADALINE1, MADALINE2, HEBBIAN1 or PERCEPTRON1 request.".into());
     }
     let fields: Vec<&str> = lines
         .next()

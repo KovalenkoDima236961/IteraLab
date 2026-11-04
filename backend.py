@@ -214,6 +214,10 @@ def _vec(text):
 
 
 def parse_output(output, request):
+    from .perceptron import PerceptronRequest, parse_output as parse_perceptron
+
+    if isinstance(request, PerceptronRequest):
+        return parse_perceptron(output, request)
     from .hebbian import HebbianRequest, parse_output as parse_hebbian
 
     if isinstance(request, HebbianRequest):
@@ -366,6 +370,10 @@ def train(request, *, cancel=None, progress=None):
 
 def export_trace(path, result):
     """Export full precision, with the immutable run inputs in each row."""
+    from .perceptron import PerceptronRequest, export_trace as export_perceptron
+
+    if isinstance(result.request, PerceptronRequest):
+        return export_perceptron(path, result)
     from .hebbian import HebbianRequest, export_trace as export_hebbian
 
     if isinstance(result.request, HebbianRequest):
@@ -433,6 +441,10 @@ def export_trace(path, result):
 
 
 def export_epochs(path, result):
+    from .perceptron import PerceptronRequest, export_epochs as export_perceptron
+
+    if isinstance(result.request, PerceptronRequest):
+        return export_perceptron(path, result)
     from .hebbian import HebbianRequest, export_epochs as export_hebbian
 
     if isinstance(result.request, HebbianRequest):

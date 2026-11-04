@@ -3,6 +3,7 @@
 
 pub mod hebbian;
 pub mod madaline;
+pub mod perceptron;
 
 pub const MAX_STEPS: usize = 100_000;
 pub const MAX_COORDINATES: usize = 1_000_000;

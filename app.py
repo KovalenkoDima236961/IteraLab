@@ -27,6 +27,15 @@ from .madaline import MAX_HIDDEN_UNITS, MadalineRequest, MadalineResult
 from . import madaline_view
 from .hebbian import HebbianRequest, HebbianResult
 from . import hebbian_view
+from .perceptron import (
+    BINARY,
+    BIPOLAR,
+    BAND,
+    PerceptronRequest,
+    PerceptronResult,
+    perceptron_samples,
+)
+from . import perceptron_view
 
 BG = "#eef2f5"
 INK = "#182d40"
@@ -97,6 +106,11 @@ class ExamApp:
         self.encoding = tk.StringVar(value="Bipolar inputs")
         self.precision = tk.StringVar(value="10")
         self.algorithm = tk.StringVar(value="ADALINE")
+        self._active_algorithm = "ADALINE"
+        self.perceptron_variant = tk.StringVar(value=BINARY)
+        self.target_hint = tk.StringVar(
+            value="One row: x1, x2, …, target\nTargets are always −1 or +1."
+        )
         self.hidden_units = tk.StringVar(value="2")
         self.configured_hidden_units = 2
         self.header_text = tk.StringVar(value="ADALINE  /  STEP-BY-STEP WORKSHEET")
@@ -112,6 +126,7 @@ class ExamApp:
                 "bias2": "0",
                 "output_weights": "0.5, 0.5",
                 "output_bias": "0.5",
+                "theta": "0",
             }.items()
         }
         self.hidden_weight_vars = [self.fields["weights"], self.fields["weights2"]]
@@ -295,15 +310,33 @@ class ExamApp:
             parent,
             textvariable=self.algorithm,
             state="readonly",
-            values=("ADALINE", "MADALINE (MRI)", "Hebbian Learning"),
+            values=("ADALINE", "MADALINE (MRI)", "Hebbian Learning", "Perceptron"),
         )
         self.algorithm_box.pack(fill="x")
         self.algorithm_box.bind(
             "<<ComboboxSelected>>", lambda _: self.switch_algorithm()
         )
-        ttk.Label(parent, text="01  TRAINING PAIRS", style="Section.TLabel").pack(
-            anchor="w"
+        self.perceptron_fields = ttk.Frame(parent)
+        ttk.Label(
+            self.perceptron_fields, text="Perceptron variant", style="Muted.TLabel"
+        ).pack(anchor="w", pady=(8, 3))
+        variant = ttk.Combobox(
+            self.perceptron_fields,
+            textvariable=self.perceptron_variant,
+            state="readonly",
+            values=(BINARY, BIPOLAR, BAND),
         )
+        variant.pack(fill="x")
+        variant.bind("<<ComboboxSelected>>", lambda _: self.change_perceptron_mode())
+        self.theta_row = ttk.Frame(self.perceptron_fields)
+        ttk.Label(
+            self.theta_row, text="Threshold band θ ≥ 0", style="Muted.TLabel"
+        ).pack(anchor="w", pady=(6, 3))
+        ttk.Entry(self.theta_row, textvariable=self.fields["theta"]).pack(fill="x")
+        self.training_section = ttk.Label(
+            parent, text="01  TRAINING PAIRS", style="Section.TLabel"
+        )
+        self.training_section.pack(anchor="w")
         box = ttk.Combobox(
             parent,
             textvariable=self.preset,
@@ -322,7 +355,7 @@ class ExamApp:
         encoding.bind("<<ComboboxSelected>>", lambda _: self.load_preset())
         ttk.Label(
             parent,
-            text="One row: x1, x2, …, target\nTargets are always −1 or +1.",
+            textvariable=self.target_hint,
             style="Muted.TLabel",
         ).pack(anchor="w", pady=(8, 6))
         self.data_input = tk.Text(
@@ -721,10 +754,13 @@ class ExamApp:
     def switch_algorithm(self):
         madaline = self.algorithm.get() == "MADALINE (MRI)"
         hebbian = self.algorithm.get() == "Hebbian Learning"
+        perceptron = self.algorithm.get() == "Perceptron"
+        was_perceptron = self._active_algorithm == "Perceptron"
+        self._active_algorithm = self.algorithm.get()
         self.header_text.set(f"{self.algorithm.get()}  /  STEP-BY-STEP WORKSHEET")
         self.root.title(f"Exam lab · {self.algorithm.get()}")
         self.run_button.configure(
-            text=f"Run {'Hebbian Learning' if hebbian else 'MADALINE' if madaline else 'ADALINE'}"
+            text=f"Run {'Perceptron' if perceptron else 'Hebbian Learning' if hebbian else 'MADALINE' if madaline else 'ADALINE'}"
         )
         self.weights_label.configure(
             text="Z1 weights w11, w21, …" if madaline else "Weights w1, w2, …"
@@ -750,19 +786,74 @@ class ExamApp:
             self.init_frame.pack(fill="x", before=self.random_note)
             for key in ("tolerance", "max_epochs"):
                 self.learning_rows[key].pack(fill="x", before=self.display_section)
+            if perceptron:
+                self.learning_rows["tolerance"].pack_forget()
             if madaline:
                 self.madaline_fields.pack(fill="x", before=self.init_frame)
             else:
                 self.madaline_fields.pack_forget()
         self._set_text(
             self.algorithm_text,
-            hebbian_view.ALGORITHM
+            perceptron_view.ALGORITHM
+            if perceptron
+            else hebbian_view.ALGORITHM
             if hebbian
             else madaline_view.ALGORITHM
             if madaline
             else ALGORITHM,
         )
+        if perceptron:
+            self.perceptron_fields.pack(fill="x", before=self.training_section)
+            self.change_perceptron_mode(reload=False)
+            if not was_perceptron:
+                self.fields["alpha"].set("1")
+                self.encoding.set(
+                    "Binary inputs"
+                    if self._perceptron_mode() == "binary"
+                    else "Bipolar inputs"
+                )
+                self.load_preset()
+        else:
+            self.perceptron_fields.pack_forget()
+            self.target_hint.set(
+                "One row: x1, x2, …, target\nTargets are always −1 or +1."
+            )
+            if was_perceptron:
+                self.load_preset()
         self.initialize(madaline)
+        self._dirty()
+
+    def _perceptron_mode(self):
+        if self.perceptron_variant.get() == BINARY:
+            return "binary"
+        if self.perceptron_variant.get() == BIPOLAR:
+            return "bipolar"
+        if self.perceptron_variant.get() == BAND:
+            return "band"
+        raise InputError("Choose binary, bipolar or threshold-band perceptron mode.")
+
+    def change_perceptron_mode(self, *, reload=True):
+        mode = self._perceptron_mode()
+        binary = mode == "binary"
+        if mode == "band":
+            self.theta_row.pack(fill="x")
+        else:
+            self.theta_row.pack_forget()
+        self.rate_label.configure(
+            text="Learning rate η · 0 < η ≤ 1"
+            if binary
+            else "Learning rate α · 0 < α ≤ 1"
+        )
+        self.target_hint.set(
+            "One row: x1, x2, …, target\nTargets: 0 or 1."
+            if binary
+            else "One row: x1, x2, …, target\nTargets and outputs: −1 or +1."
+            if mode == "bipolar"
+            else "One row: x1, x2, …, target\nTargets: −1 or +1; output may be 0."
+        )
+        if reload:
+            self.encoding.set("Binary inputs" if binary else "Bipolar inputs")
+            self.load_preset()
         self._dirty()
 
     def _dirty(self, *_):
@@ -791,8 +882,16 @@ class ExamApp:
     def load_preset(self):
         if self.preset.get() == "Custom":
             return
-        samples = preset_samples(
-            self.preset.get(), self.encoding.get() == "Bipolar inputs"
+        samples = (
+            perceptron_samples(
+                self.preset.get(),
+                self.encoding.get() == "Bipolar inputs",
+                self._perceptron_mode(),
+            )
+            if self.algorithm.get() == "Perceptron"
+            else preset_samples(
+                self.preset.get(), self.encoding.get() == "Bipolar inputs"
+            )
         )
         self.loading = True
         try:
@@ -846,7 +945,12 @@ class ExamApp:
             text = Path(path).read_text(encoding="utf-8-sig")
             samples = parse_samples(text)
             n = len(samples[0].inputs)
-            Request(samples, (0.0,) * n, max_epochs=1).validate()
+            if self.algorithm.get() == "Perceptron":
+                PerceptronRequest(
+                    samples, (0.0,) * n, mode=self._perceptron_mode(), max_epochs=1
+                ).validate()
+            else:
+                Request(samples, (0.0,) * n, max_epochs=1).validate()
             self.loading = True
             self._known_data = samples_text(samples)
             self.data_input.delete("1.0", "end")
@@ -877,6 +981,21 @@ class ExamApp:
             epochs = int(self.fields["max_epochs"].get())
         except ValueError as exc:
             raise InputError("Maximum epochs must be an integer.") from exc
+        if self.algorithm.get() == "Perceptron":
+            mode = self._perceptron_mode()
+            request = PerceptronRequest(
+                samples=parse_samples(self.data_input.get("1.0", "end")),
+                weights=vector(self.fields["weights"].get()),
+                bias=number(self.fields["bias"].get(), "Bias"),
+                alpha=number(self.fields["alpha"].get(), "Learning rate"),
+                max_epochs=epochs,
+                mode=mode,
+                theta=number(self.fields["theta"].get(), "Theta")
+                if mode == "band"
+                else 0.0,
+            )
+            request.validate()
+            return request
         request = Request(
             samples=parse_samples(self.data_input.get("1.0", "end")),
             weights=vector(self.fields["weights"].get()),
@@ -1010,7 +1129,9 @@ class ExamApp:
         )
         self.metrics["accuracy"].set(f"{r.correct} / {len(r.request.samples)} correct")
         self.snapshot.set(
-            hebbian_view.snapshot(self)
+            perceptron_view.snapshot(self)
+            if isinstance(r, PerceptronResult)
+            else hebbian_view.snapshot(self)
             if isinstance(r, HebbianResult)
             else madaline_view.snapshot(self)
             if isinstance(r, MadalineResult)
@@ -1071,6 +1192,9 @@ class ExamApp:
         if isinstance(r, HebbianResult):
             hebbian_view.worked_step(self, s)
             return
+        if isinstance(r, PerceptronResult):
+            perceptron_view.worked_step(self, s)
+            return
         if isinstance(r, MadalineResult):
             madaline_view.worked_step(self, s)
             return
@@ -1120,6 +1244,8 @@ class ExamApp:
 
     def _render_trace(self):
         r = self.result
+        if isinstance(r, PerceptronResult):
+            return perceptron_view.render_trace(self, PAGE_SIZE)
         if isinstance(r, HebbianResult):
             return hebbian_view.render_trace(self, PAGE_SIZE)
         if isinstance(r, MadalineResult):
@@ -1167,6 +1293,8 @@ class ExamApp:
 
     def _render_epochs(self):
         r = self.result
+        if isinstance(r, PerceptronResult):
+            return perceptron_view.render_epochs(self, PAGE_SIZE)
         if isinstance(r, HebbianResult):
             return hebbian_view.render_epochs(self, PAGE_SIZE)
         if isinstance(r, MadalineResult):
@@ -1263,6 +1391,8 @@ class ExamApp:
 
     def _render_final(self):
         r = self.result
+        if isinstance(r, PerceptronResult):
+            return perceptron_view.render_final(self)
         if isinstance(r, HebbianResult):
             return hebbian_view.render_final(self)
         if isinstance(r, MadalineResult):
@@ -1339,7 +1469,9 @@ class ExamApp:
             (
                 (
                     "CLASSIFICATION SSE"
-                    if isinstance(self.result, (MadalineResult, HebbianResult))
+                    if isinstance(
+                        self.result, (MadalineResult, HebbianResult, PerceptronResult)
+                    )
                     else "FIXED-MODEL SSE",
                     "sse",
                     INK,
@@ -1357,7 +1489,9 @@ class ExamApp:
                 [tolerance] if log and tolerance is not None else [] if log else [0.0]
             )
             zero_floor = (
-                min(math.log10(v) for v in all_values if v > 0) - 1 if log else 0
+                min((math.log10(v) for v in all_values if v > 0), default=0.0) - 1
+                if log
+                else 0
             )
             transform = (
                 (lambda v: math.log10(v) if v > 0 else zero_floor)
@@ -1442,7 +1576,9 @@ class ExamApp:
 
     def save_trace(self):
         name = (
-            "hebbian"
+            "perceptron"
+            if isinstance(self.result, PerceptronResult)
+            else "hebbian"
             if isinstance(self.result, HebbianResult)
             else "madaline"
             if isinstance(self.result, MadalineResult)
@@ -1453,7 +1589,9 @@ class ExamApp:
     def save_epochs(self):
         hebbian = isinstance(self.result, HebbianResult)
         name = (
-            "hebbian"
+            "perceptron"
+            if isinstance(self.result, PerceptronResult)
+            else "hebbian"
             if hebbian
             else "madaline"
             if isinstance(self.result, MadalineResult)

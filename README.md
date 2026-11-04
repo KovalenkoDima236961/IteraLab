@@ -1,6 +1,6 @@
-# Exam lab · ADALINE, MADALINE and Hebbian Learning
+# Exam lab · ADALINE, MADALINE, Hebbian Learning and Perceptron
 
-A local desktop worksheet for the supplied **ADALINE, MADALINE Rule I (MRI), and Hebbian Learning** algorithms.
+A local desktop worksheet for the supplied **ADALINE, MADALINE Rule I (MRI), Hebbian Learning, and Perceptron** algorithms.
 **Rust performs all training, stopping checks, SSE and predictions.** Python's
 standard-library Tk interface presents the inputs and worked calculations.
 No third-party Python packages, Rust crates, network service, or API key is needed.
@@ -21,10 +21,12 @@ distribution's `python3-tk` package. `python3 -m tkinter` checks the Tk installa
 
 ## Use
 
-1. Select **ADALINE**, **MADALINE (MRI)**, or **Hebbian Learning** in the algorithm selector, then choose
+1. Select **ADALINE**, **MADALINE (MRI)**, **Hebbian Learning**, or **Perceptron** in the algorithm selector, then choose
    **AND, OR, NAND, NOR, XOR, NOT**, or edit the training pairs directly.
-   Each row contains `x1, x2, …, target`. Targets must be **−1 or +1**.
-   Presets default to bipolar inputs; binary inputs are an explicit alternative.
+   Each row contains `x1, x2, …, target`. Binary Perceptron targets are **0 or 1**;
+   other modes use **−1 or +1**.
+   Presets default to bipolar inputs, or binary inputs for binary Perceptron;
+   the input encoding can also be chosen independently.
    Custom finite real inputs also work with the same equations. A CSV import
    accepts an optional `x1,x2,target` header. Commas, semicolons and whitespace
    are accepted as separators; numbers use a decimal point.
@@ -43,6 +45,10 @@ distribution's `python3-tk` package. `python3 -m tkinter` checks the Tk installa
    the notes. These initial fields are read-only, and random initialization,
    tolerance, and maximum epochs are hidden. Enter its positive learning rate **η**;
    the procedure makes exactly one ordered pass, followed by verification.
+   **Perceptron** offers **Binary (0/1)**, **Bipolar (−1/+1)**, and
+   **Threshold band (−1/0/+1)**. Selection starts from zero with rate 1. Its
+   tolerance control is hidden; set a maximum epoch budget and, in band mode,
+   a nonnegative **θ**. Its stopping rule requires a full pass without changes.
 3. Press **Run** for your selected algorithm or **Ctrl/⌘+Enter**. Compilation and training run in a
    worker; **Cancel calculation** terminates the process and retains the previous
    completed result. Editing inputs while a run is active affects the next run.
@@ -217,6 +223,73 @@ the previously committed prefix, and reports `numerical_limit`. Such a run has
 no completed pass-summary row. Its displayed predictions describe the last
 valid partial model and are explicitly labeled as incomplete verification.
 
+## Perceptron
+
+The image's two activation/update combinations and an additional bipolar sign
+perceptron are separate variants, recorded in every run snapshot and export.
+
+| Variant | Targets and activation | Weight/bias update |
+| --- | --- | --- |
+| Binary (upper section) | Targets `0,1`; `y=1` at `net>=0`, otherwise `0` | `e=t-y`; `delta_w_i=eta*e*x_i`, `delta_b=eta*e` |
+| Bipolar sign | Targets `-1,+1`; `y=+1` at `net>=0`, otherwise `-1` | Only when `y!=t`: `delta_w_i=alpha*t*x_i`, `delta_b=alpha*t` |
+| Threshold band (lower Steps 0–6) | Targets `-1,+1`; `y=+1` above θ, `0` on `[-theta,theta]`, `-1` below −θ | Only when `y!=t`: `delta_w_i=alpha*t*x_i`, `delta_b=alpha*t` |
+
+All variants calculate `net = b + sum(x_i*w_i)` from the old model. All deltas for one
+pattern use that same response and are committed before visiting the next row.
+Correct predictions leave all weights and bias unchanged. In the bipolar sign and band variants,
+an opposite-class prediction gives `e=2` or `-2`, but the update still uses the
+**target** rather than that error. At exactly zero, binary output is `1`, bipolar
+sign output is `+1`, and band output is `0` when θ = 0. Bipolar sign never
+predicts a neutral class. Both `-theta` and `theta` are inside the threshold band.
+
+Choose `0 < rate <= 1`, as specified in Step 0. Switching to Perceptron defaults
+to zero initial weights/bias and rate 1; initial coefficients remain editable.
+Theta defaults to zero and is editable only for band mode. The screenshot has
+two inputs, and the same formula supports the GUI's 1–32 input coordinates.
+Custom finite real inputs are accepted with targets matching the selected mode.
+
+Presets and CSV import support binary `0/1` and bipolar `-1/+1` targets. Choosing a Perceptron
+variant reloads the selected truth-table preset in its default input encoding
+and target labels. Switching back to another algorithm reloads preset targets
+as bipolar. **Custom training data is retained without automatic recoding**;
+input validation identifies labels incompatible with the selected rule.
+
+Step 6 runs only after a full pass. **`weights_stable`** means no weight or bias
+changed at any point in that pass. Neither final accuracy nor equality of the
+epoch's starting and ending weights replaces this test: changes can cancel.
+Even after an epoch first reaches perfect classification, the algorithm performs
+the unchanged verification epoch required by the notes. An epoch limit reports
+`epoch_limit`, including for nonseparable XOR. The existing numerical guard
+reports `numerical_limit` and retains the last valid model and committed prefix.
+
+**Binary AND check:** keep the default row order `(1,1), (1,0), (0,1), (0,0)`.
+With zero initialization and rate 1, the final model is `w=(1,2), b=-3`.
+Epoch 7 ends with all four predictions correct but contains updates; epoch 8
+makes no changes and stops. The first pattern at net zero is already correct
+and produces no update.
+
+**Bipolar AND check:** select **Bipolar (−1/+1)**, zero initialization, and rate 1.
+The default bipolar truth table finishes epoch 1 with `w=(0,0), b=-2`, reaches
+`w=(1,1), b=-1` with all predictions correct in epoch 2, then stops after the
+unchanged third epoch. The negative-target mistake at net zero records error
+`-2` but applies the target-based bias delta `-1`. This convention follows the
+lecture's Rosenblatt update; it does not multiply the update by the ±2 error.
+
+Worked steps show the selected activation, classification error, applicable
+update formula, substituted deltas, and the complete-pass stopping check. Epoch
+tables distinguish **Mistakes** (incorrect predictions during the online pass),
+**Changed visits** (patterns that actually changed coefficients), and **Correct**
+(accuracy of the fixed epoch-end model). Classification SSE is `sum((t-y)^2)`:
+it equals the number of binary errors, and each bipolar sign error contributes 4;
+in band mode a wrong output contributes
+1 for the neutral class or 4 for an opposite class. These are diagnostics only.
+
+Both CSV exports include the mode, learning rate, θ, epoch budget, and
+full-precision values. The trace also includes the initial model, unchanged
+correct patterns, and a `weights_changed` flag. Existing results retain their original variant and labels
+when you edit the form or switch algorithms. Float calculations use Rust `f64`;
+changing display precision does not round the computation.
+
 ## Calculation limits
 
 To keep complete traces practical, requests support 1–32 inputs, 1–128 patterns,
@@ -231,11 +304,13 @@ in magnitude. Each compiler/training process has a two-minute timeout.
 - `rust_backend/src/lib.rs`: numerical implementation and hand-calculation tests.
 - `rust_backend/src/madaline.rs`: MADALINE Rule I and its branch/boundary tests.
 - `rust_backend/src/hebbian.rs`: zero-initialized, one-pass Hebbian training and verification.
+- `rust_backend/src/perceptron.rs`: binary, bipolar sign, and threshold-band perceptron rules.
 - `rust_backend/src/main.rs`: validated line protocol for the Python adapter.
 - `backend.py`: immutable run data, Rust build/process management, CSV exports.
 - `app.py`: interface, substituted formulas, navigation and canvas charts.
 - `madaline.py`, `madaline_view.py`: MADALINE run data, protocol, CSV and worked views.
 - `hebbian.py`, `hebbian_view.py`: Hebbian run data, protocol, CSV and worked views.
+- `perceptron.py`, `perceptron_view.py`: Perceptron variants, protocol, CSV and worked views.
 - `main.py`: portable launcher. Other algorithms can be added as separate Rust
   modules and worksheet views without moving calculation loops into Python.
 
@@ -260,3 +335,12 @@ CSV dimensions, unambiguous coefficient names, and GUI resizing.
 Hebbian checks cover the hand-worked AND trace, target-based updates, one-pass
 completion with imperfect accuracy, custom dimensions, order, fresh zero starts,
 numerical limits, exports, and switching between all algorithm views.
+Perceptron checks cover the hand-worked binary AND trace, the required unchanged
+epoch, threshold boundaries, target-versus-error updates, cancelling updates,
+custom initialization, XOR limits, binary CSV input, zero-update charts, mode
+switching and immutable exports. When `du_7_prednaska_1/results` is present,
+all six saved threshold-band lecture traces are compared value by value using
+their original input order, learning rate and theta.
+Bipolar sign tests verify the zero tie, absence of neutral predictions,
+target-based deltas, a hand-worked AND trace, unchanged-pass stopping, target
+validation, mode switching, and exports retaining their original variant.

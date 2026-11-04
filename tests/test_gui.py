@@ -372,6 +372,225 @@ class DesktopTests(unittest.TestCase):
         self.assertIn("No update was committed", a.worked_text.get("1.0", "end"))
         self.assertIn("incomplete", a.final_text.get("1.0", "end"))
 
+    def test_perceptron_binary_and_band_workflows_exports_and_switch_back(self):
+        from every_example_gui.perceptron import BAND, PerceptronResult
+
+        a = self.app
+        a.algorithm.set("Perceptron")
+        a.switch_algorithm()
+        self.root.update()
+        self.assertTrue(a.perceptron_fields.winfo_ismapped())
+        self.assertFalse(a.theta_row.winfo_ismapped())
+        self.assertFalse(a.learning_rows["tolerance"].winfo_ismapped())
+        self.assertTrue(a.learning_rows["max_epochs"].winfo_ismapped())
+        self.assertEqual(a.encoding.get(), "Binary inputs")
+        self.assertIn("0 or 1", a.target_hint.get())
+        self.assertEqual(
+            [s.target for s in a.read_request().samples], [1.0, 0.0, 0.0, 0.0]
+        )
+        a.fields["tolerance"].set("unused")
+        a.fields["theta"].set("unused")
+        a.start()
+        self.wait_for_result()
+        self.assertIsInstance(a.result, PerceptronResult)
+        self.assertEqual(a.result.completed_epochs, 8)
+        self.assertEqual(a.result.weights, (1.0, 2.0))
+        self.assertEqual(a.result.correct, 4)
+        self.assertIn("correct prediction", a.worked_text.get("1.0", "end"))
+        a.go_step(1)
+        self.assertIn("Δb = ηe", a.worked_text.get("1.0", "end"))
+        a.go_step(len(a.result.steps) - 1)
+        self.assertIn("No weights or bias changed", a.worked_text.get("1.0", "end"))
+        original = a.result
+        a.perceptron_variant.set(BAND)
+        a.change_perceptron_mode()
+        a.fields["theta"].set("0.25")
+        self.root.update()
+        self.assertTrue(a.theta_row.winfo_ismapped())
+        self.assertEqual(a.encoding.get(), "Bipolar inputs")
+        self.assertEqual(
+            [s.target for s in a.read_request().samples], [1.0, -1.0, -1.0, -1.0]
+        )
+        a._refresh()
+        self.assertIs(a.result, original)
+        with tempfile.TemporaryDirectory() as directory:
+            for method, name in (
+                (a.save_trace, "trace.csv"),
+                (a.save_epochs, "epochs.csv"),
+            ):
+                path = Path(directory) / name
+                with patch(
+                    "every_example_gui.app.filedialog.asksaveasfilename",
+                    return_value=str(path),
+                ):
+                    method()
+                with path.open() as stream:
+                    row = next(csv.DictReader(stream))
+                self.assertEqual(row["mode"], "binary")
+                self.assertEqual(float(row["theta"]), 0.0)
+        a.start()
+        self.wait_for_result()
+        self.assertEqual(a.result.request.mode, "band")
+        self.assertEqual(a.result.correct, 4)
+        self.assertIn("αt", a.worked_text.get("1.0", "end"))
+        a.algorithm.set("ADALINE")
+        a.switch_algorithm()
+        self.root.update()
+        self.assertFalse(a.perceptron_fields.winfo_ismapped())
+        self.assertTrue(a.learning_rows["tolerance"].winfo_ismapped())
+        a.fields["tolerance"].set("0.001")
+        a.fields["alpha"].set("0.2")
+        a.fields["max_epochs"].set("2")
+        a.start()
+        self.wait_for_result()
+        self.assertNotIsInstance(a.result, PerceptronResult)
+
+    def test_perceptron_boundaries_custom_data_binary_import_and_zero_update_chart(
+        self,
+    ):
+        from every_example_gui.backend import InputError
+        from every_example_gui.perceptron import BINARY, BAND
+
+        a = self.app
+        a.algorithm.set("Perceptron")
+        a.switch_algorithm()
+        a.perceptron_variant.set(BAND)
+        a.change_perceptron_mode()
+        a.preset.set("Custom")
+        a.data_input.delete("1.0", "end")
+        a.data_input.insert("1.0", "0,1")
+        a.fields["weights"].set("0")
+        a.fields["bias"].set("0.25")
+        a.fields["theta"].set("0.25")
+        a.fields["alpha"].set("0.5")
+        a.fields["max_epochs"].set("1")
+        a.start()
+        self.wait_for_result()
+        self.assertEqual(a.result.steps[0].output, 0)
+        self.assertIn("including both boundaries", a.worked_text.get("1.0", "end"))
+        a.data_input.delete("1.0", "end")
+        a.data_input.insert("1.0", "1,1")
+        a.fields["bias"].set("-0.5")
+        a.fields["theta"].set("0")
+        a.fields["alpha"].set("0.25")
+        a.start()
+        self.wait_for_result()
+        self.assertEqual(a.result.steps[0].error, 2.0)
+        self.assertEqual(a.result.steps[0].delta_bias, 0.25)
+        a.perceptron_variant.set(BINARY)
+        a.change_perceptron_mode()
+        a.fields["bias"].set("0")
+        a.fields["weights"].set("0")
+        a.data_input.delete("1.0", "end")
+        a.data_input.insert("1.0", "0,1")
+        a.start()
+        self.wait_for_result()
+        self.assertEqual(a.result.epochs[0].max_change, 0.0)
+        a.notebook.select(a.epoch_tab)
+        self.root.update()
+        a.draw_chart()
+        self.assertGreater(len(a.chart.find_all()), 10)
+        a.data_input.delete("1.0", "end")
+        a.data_input.insert("1.0", "0,-1")
+        self.root.update()
+        with self.assertRaises(InputError):
+            a.read_request()
+        self.assertIn("-1", a.data_input.get("1.0", "end"))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "binary.csv"
+            path.write_text("x1,target\n0,0\n1,1\n", encoding="utf-8")
+            with patch(
+                "every_example_gui.app.filedialog.askopenfilename",
+                return_value=str(path),
+            ):
+                a.import_data()
+            a.fields["max_epochs"].set("20")
+            a.start()
+            self.wait_for_result()
+            self.assertEqual(a.result.correct, 2)
+            self.assertEqual(a.result.request.samples[0].target, 0.0)
+
+    def test_perceptron_epoch_limit_parameter_errors_and_numerical_guard(self):
+        a = self.app
+        a.algorithm.set("Perceptron")
+        a.switch_algorithm()
+        a.preset.set("XOR")
+        a.load_preset()
+        a.fields["max_epochs"].set("5")
+        a.start()
+        self.wait_for_result()
+        self.assertEqual(a.result.status, "epoch_limit")
+        self.assertEqual(a.result.completed_epochs, 5)
+        previous = a.result
+        a.fields["alpha"].set("2")
+        with patch("every_example_gui.app.messagebox.showerror") as error:
+            a.start()
+            error.assert_called_once()
+        self.assertIs(a.result, previous)
+        a.fields["alpha"].set("1")
+        a.data_input.delete("1.0", "end")
+        a.data_input.insert("1.0", "1e50,1e50,1")
+        a.fields["weights"].set("1e50,1e50")
+        a.fields["bias"].set("0")
+        a.start()
+        self.wait_for_result()
+        self.assertEqual(a.result.status, "numerical_limit")
+        self.assertEqual(a.result.steps, ())
+        self.assertIn("No update was committed", a.worked_text.get("1.0", "end"))
+
+    def test_bipolar_perceptron_sign_option_worked_steps_and_snapshot_exports(self):
+        from every_example_gui.perceptron import BIPOLAR, BAND
+
+        a = self.app
+        a.algorithm.set("Perceptron")
+        a.switch_algorithm()
+        a.perceptron_variant.set(BIPOLAR)
+        a.change_perceptron_mode()
+        # Theta belongs only to band mode and cannot affect this sign perceptron.
+        a.fields["theta"].set("unused")
+        self.root.update()
+        self.assertFalse(a.theta_row.winfo_ismapped())
+        self.assertEqual(a.encoding.get(), "Bipolar inputs")
+        self.assertIn("Targets and outputs", a.target_hint.get())
+        self.assertEqual(a.read_request().mode, "bipolar")
+        self.assertEqual(
+            [s.target for s in a.read_request().samples], [1.0, -1.0, -1.0, -1.0]
+        )
+        a.start()
+        self.wait_for_result()
+        self.assertEqual(a.result.completed_epochs, 3)
+        self.assertEqual(a.result.correct, 4)
+        self.assertEqual(a.result.steps[0].output, 1)
+        self.assertIn("bipolar sign activation", a.worked_text.get("1.0", "end"))
+        a.go_step(1)
+        self.assertIn("Δb = αt", a.worked_text.get("1.0", "end"))
+        self.assertIn("otherwise −1.", a.final_text.get("1.0", "end"))
+        self.assertNotIn("otherwise y = 0", a.final_text.get("1.0", "end"))
+        self.assertTrue(all(p.output in (-1, 1) for p in a.result.predictions))
+        original = a.result
+        a.perceptron_variant.set(BAND)
+        a.change_perceptron_mode()
+        a.fields["theta"].set("0.25")
+        self.root.update()
+        self.assertTrue(a.theta_row.winfo_ismapped())
+        a._refresh()
+        self.assertIs(a.result, original)
+        self.assertIn("Bipolar", a.snapshot.get())
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "bipolar.csv"
+            with patch(
+                "every_example_gui.app.filedialog.asksaveasfilename",
+                return_value=str(path),
+            ):
+                a.save_trace()
+            with path.open() as stream:
+                row = next(csv.DictReader(stream))
+            self.assertEqual(row["mode"], "bipolar")
+            self.assertEqual(float(row["theta"]), 0.0)
+        a.start()
+        self.wait_for_result()
+        self.assertEqual(a.result.request.mode, "band")
+
 
 if __name__ == "__main__":
     unittest.main()
