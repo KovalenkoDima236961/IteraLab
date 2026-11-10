@@ -1,7 +1,7 @@
 """MADALINE worksheet presentation; training and predictions come from Rust."""
 
-from .backend import STATUS
-from .madaline import weight_names
+from ..backend import STATUS
+from ..algorithms.madaline import weight_names
 
 ALGORITHM = """MADALINE · Rule I (MRI) · supplied lecture algorithm
 
@@ -36,14 +36,14 @@ Otherwise, if t = +1: select ONE hidden unit whose net input is closest to zero 
     bⱼ(new)  = bⱼ(old)  + α(1 − z_inⱼ)
     wᵢⱼ(new) = wᵢⱼ(old) + α(1 − z_inⱼ)xᵢ
 
-Otherwise, if t = −1: update ALL hidden units with POSITIVE net input (z_inⱼ > 0).
+Otherwise, if t = −1: update ALL hidden units with nonnegative net input (z_inⱼ ≥ 0).
     bⱼ(new)  = bⱼ(old)  + α(−1 − z_inⱼ)
     wᵢⱼ(new) = wᵢⱼ(old) + α(−1 − z_inⱼ)xᵢ
 
 Every selected unit uses its own pre-update z_in. Nonselected units and the entire output layer stay unchanged. All updates for a pattern are committed together before the next pattern.
 
 Zero convention
-The page's “positive net input” is implemented literally as > 0, although activation at exactly zero is +1. A zero-net unit is excluded from the negative-target update. Consequently, zero initialization can stop with classification errors. Seeded small random initialization is the default for MADALINE.
+Because f(0)=+1, a zero-net unit is active and is included in the negative-target update. This resolves the printed “positive” wording consistently with the worked zero-initialized AND exercise (07_cvicenie, page 10). Excluding zero incorrectly stops that exercise with errors. Seeded small random initialization remains the default for MADALINE.
 
 Step 8 · Stop after a complete epoch
 The page permits stopped changes, an acceptable level of changes, or a maximum number of epochs. This worksheet reports:
@@ -121,7 +121,7 @@ def worked_step(app, s):
     else:
         chosen = ", ".join(f"Z{j + 1}" for j in range(units) if s.selected[j]) or "none"
         lines.append(
-            f"STEP 7 · y ≠ t, t = −1: select ALL units with z_in > 0\nSelected units: {chosen}. Zero-net units are excluded."
+            f"STEP 7 · y ≠ t, t = −1: select ALL units with z_in ≥ 0\nSelected units: {chosen}. Zero-net units are included because f(0)=+1."
         )
     for j in range(units):
         if not s.selected[j]:

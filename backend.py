@@ -214,16 +214,57 @@ def _vec(text):
 
 
 def parse_output(output, request):
-    from .perceptron import PerceptronRequest, parse_output as parse_perceptron
+    from .algorithms.powell import PowellRequest, parse_output as parse_powell
+
+    if isinstance(request, PowellRequest):
+        return parse_powell(output, request)
+    from .algorithms.normalized_gradient import (
+        NormalizedRequest,
+        parse_output as parse_normalized,
+    )
+
+    if isinstance(request, NormalizedRequest):
+        return parse_normalized(output, request)
+    from .algorithms.nelder_mead import (
+        NelderMeadRequest,
+        parse_output as parse_nelder_mead,
+    )
+
+    if isinstance(request, NelderMeadRequest):
+        return parse_nelder_mead(output, request)
+    from .algorithms.newton2d import Newton2DRequest, parse_output as parse_newton2d
+
+    if isinstance(request, Newton2DRequest):
+        return parse_newton2d(output, request)
+    from .algorithms.steepest import SteepestRequest, parse_output as parse_steepest
+
+    if isinstance(request, SteepestRequest):
+        return parse_steepest(output, request)
+    from .algorithms.optimization import (
+        GradientRequest,
+        NewtonRequest,
+        parse_output as parse_gradient,
+    )
+
+    if isinstance(request, (GradientRequest, NewtonRequest)):
+        return parse_gradient(output, request)
+    from .algorithms.lecture08 import Lecture08Request, parse_output as parse_lecture08
+
+    if isinstance(request, Lecture08Request):
+        return parse_lecture08(output, request)
+    from .algorithms.perceptron import (
+        PerceptronRequest,
+        parse_output as parse_perceptron,
+    )
 
     if isinstance(request, PerceptronRequest):
         return parse_perceptron(output, request)
-    from .hebbian import HebbianRequest, parse_output as parse_hebbian
+    from .algorithms.hebbian import HebbianRequest, parse_output as parse_hebbian
 
     if isinstance(request, HebbianRequest):
         return parse_hebbian(output, request)
     if not isinstance(request, Request):
-        from .madaline import parse_output as parse_madaline
+        from .algorithms.madaline import parse_output as parse_madaline
 
         return parse_madaline(output, request)
     steps, epochs, predictions = [], [], []
@@ -361,7 +402,7 @@ def train(request, *, cancel=None, progress=None):
             "algorithm_name",
             "ADALINE" if isinstance(request, Request) else "MADALINE MRI",
         )
-        progress(f"Training {name} in Rust…")
+        progress(f"Calculating {name} in Rust…")
     output = _process([str(binary)], cancel, payload=request.serialize())
     if cancel.is_set():
         raise Cancelled()
@@ -370,16 +411,19 @@ def train(request, *, cancel=None, progress=None):
 
 def export_trace(path, result):
     """Export full precision, with the immutable run inputs in each row."""
-    from .perceptron import PerceptronRequest, export_trace as export_perceptron
+    from .algorithms.perceptron import (
+        PerceptronRequest,
+        export_trace as export_perceptron,
+    )
 
     if isinstance(result.request, PerceptronRequest):
         return export_perceptron(path, result)
-    from .hebbian import HebbianRequest, export_trace as export_hebbian
+    from .algorithms.hebbian import HebbianRequest, export_trace as export_hebbian
 
     if isinstance(result.request, HebbianRequest):
         return export_hebbian(path, result)
     if not isinstance(result.request, Request):
-        from .madaline import export_trace as export_madaline
+        from .algorithms.madaline import export_trace as export_madaline
 
         return export_madaline(path, result)
     r = result.request
@@ -441,16 +485,19 @@ def export_trace(path, result):
 
 
 def export_epochs(path, result):
-    from .perceptron import PerceptronRequest, export_epochs as export_perceptron
+    from .algorithms.perceptron import (
+        PerceptronRequest,
+        export_epochs as export_perceptron,
+    )
 
     if isinstance(result.request, PerceptronRequest):
         return export_perceptron(path, result)
-    from .hebbian import HebbianRequest, export_epochs as export_hebbian
+    from .algorithms.hebbian import HebbianRequest, export_epochs as export_hebbian
 
     if isinstance(result.request, HebbianRequest):
         return export_hebbian(path, result)
     if not isinstance(result.request, Request):
-        from .madaline import export_epochs as export_madaline
+        from .algorithms.madaline import export_epochs as export_madaline
 
         return export_madaline(path, result)
     with Path(path).open("w", encoding="utf-8", newline="") as stream:

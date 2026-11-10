@@ -1,7 +1,7 @@
 """Worked calculations for binary, bipolar sign, and threshold-band perceptrons."""
 
-from .backend import STATUS
-from .perceptron import MODE_LABELS
+from ..backend import STATUS
+from ..algorithms.perceptron import MODE_LABELS
 
 ALGORITHM = """Perceptron · binary, bipolar sign, and threshold-band variants
 
@@ -24,6 +24,12 @@ Targets and predictions are −1 or +1; there is no neutral class. At net = 0 th
     Δwᵢ = α t xᵢ
     Δb = α t
 On a correct prediction, all deltas are zero. The classification error t − y is ±2 on a mistake, but this update uses αt, not α(t−y).
+
+Bipolar · error update (CV6Perceptron)
+    y = +1 if net ≥ 0, otherwise −1
+    e = t − y
+    Δwᵢ = α e xᵢ; Δb = α e
+This is the CV6 handwritten rule: a mistaken bipolar prediction gives e=±2. It uses the same activation as Bipolar sign but twice the update at the same α. Select it to reproduce the handwritten AND, OR, XOR and majority-vote calculations.
 
 Threshold band (−1/0/+1) · Steps 0–6 in the lower section
     net = b + Σ xᵢwᵢ
@@ -74,7 +80,7 @@ def snapshot(app):
         "net ≥ 0 → 1"
         if r.mode == "binary"
         else "net ≥ 0 → +1; otherwise −1"
-        if r.mode == "bipolar"
+        if r.mode in ("bipolar", "bipolar_error")
         else f"θ = {f(r.theta)}"
     )
     return f"Run snapshot: Perceptron · {MODE_LABELS[r.mode]} · rate = {f(r.alpha)} · {threshold} · {len(r.weights)} inputs · {len(r.samples)} patterns · initial w = ({', '.join(map(f, r.weights))}), b = {f(r.bias)}"
@@ -83,7 +89,7 @@ def snapshot(app):
 def activation_text(request, net, output, f):
     if request.mode == "binary":
         return f"y = {output} because net {'≥' if net >= 0 else '<'} 0."
-    if request.mode == "bipolar":
+    if request.mode in ("bipolar", "bipolar_error"):
         return f"y = {output:+d} because net {'≥' if net >= 0 else '<'} 0 (bipolar sign activation)."
     if net > request.theta:
         return f"y = +1 because net > θ = {f(request.theta)}."
@@ -109,8 +115,10 @@ def worked_step(app, s):
             "STEP 5 · y = t: correct prediction\nAll deltas are zero; weights and bias remain unchanged."
         )
     else:
-        factor = s.error if request.mode == "binary" else sample.target
-        label = "ηe" if request.mode == "binary" else "αt"
+        factor = (
+            s.error if request.mode in ("binary", "bipolar_error") else sample.target
+        )
+        label = "ηe" if request.mode in ("binary", "bipolar_error") else "αt"
         lines.append(
             f"STEP 5 · y ≠ t: apply the {MODE_LABELS[request.mode]} rule\nΔb = {label} = ({f(request.alpha)})×({f(factor)}) = {f(s.delta_bias)}"
         )
@@ -257,7 +265,7 @@ def render_final(app):
         "y = 1 if net ≥ 0, otherwise 0."
         if r.request.mode == "binary"
         else "y = +1 if net ≥ 0, otherwise −1."
-        if r.request.mode == "bipolar"
+        if r.request.mode in ("bipolar", "bipolar_error")
         else f"y = +1 if net > {f(r.request.theta)}; y = −1 if net < {f(-r.request.theta)}; otherwise y = 0."
     )
     app._set_text(

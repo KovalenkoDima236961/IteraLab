@@ -1,6 +1,6 @@
 """Substitutions and tables for the supplied one-pass Hebbian procedure."""
 
-from .backend import STATUS
+from ..backend import STATUS
 
 ALGORITHM = """Hebbian Learning · supplied lecture algorithm
 

@@ -164,8 +164,9 @@ pub fn train(samples: &[Sample], initial: Model, options: Options) -> Result<Tra
                 selected[closest] = true;
                 "positive_closest"
             } else {
-                // Literal worksheet condition: positive net input, strictly > 0.
-                selected = response.nets.iter().map(|&net| net > 0.0).collect();
+                // f(0)=+1: zero-net units are active and must also be corrected.
+                // Excluding them falsely declares zero-initialized AND stable.
+                selected = response.nets.iter().map(|&net| net >= 0.0).collect();
                 "negative_positive"
             };
             let mut errors = vec![0.0; units];
@@ -355,7 +356,7 @@ mod tests {
         )
         .unwrap();
         let s = &r.steps[0];
-        assert_eq!(s.selected, vec![true, false, true, false, true]);
+        assert_eq!(s.selected, vec![true, false, true, true, true]);
         close(s.delta_biases[4], -0.225);
         close(s.after.hidden[4].weights[0], -0.225);
         close(r.epochs[0].max_change, 0.35);
@@ -429,12 +430,12 @@ mod tests {
     }
 
     #[test]
-    fn zero_maps_to_positive_class_but_is_excluded_by_literal_positive_net_rule() {
+    fn zero_maps_to_positive_class_and_is_corrected_for_negative_targets() {
         let r = run([0., 0.], -1.);
         assert_eq!(r.steps[0].response.hidden_outputs, [1, 1]);
-        assert_eq!(r.steps[0].selected, [false, false]);
-        assert_eq!(r.status, Status::WeightsStable);
-        assert_eq!(r.epochs[0].correct, 0);
+        assert_eq!(r.steps[0].selected, [true, true]);
+        assert_eq!(r.status, Status::EpochLimit);
+        assert_eq!(r.epochs[0].correct, 1);
     }
 
     #[test]

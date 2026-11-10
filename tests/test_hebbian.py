@@ -13,7 +13,7 @@ from every_example_gui.backend import (
     preset_samples,
     train,
 )
-from every_example_gui.hebbian import HebbianRequest, HebbianResult
+from every_example_gui.algorithms.hebbian import HebbianRequest, HebbianResult
 
 
 class HebbianTests(unittest.TestCase):

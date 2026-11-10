@@ -9,7 +9,7 @@ if __package__ in (None, ""):
 
 def main():
     try:
-        from every_example_gui.app import run
+        from every_example_gui.ui.app import run
     except ImportError as exc:
         print(
             f"Could not load the desktop interface: {exc}\nUse Python 3.10+ with Tk installed.",

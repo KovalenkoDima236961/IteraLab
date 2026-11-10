@@ -1,5 +1,11 @@
 #[path = "lib.rs"]
 mod core;
+mod lecture08;
+mod nelder_mead;
+mod newton2d;
+mod normalized_gradient;
+mod optimization;
+mod powell;
 
 use core::{Model, Options, Sample};
 use std::io::{self, BufWriter, Read, Write};
@@ -233,8 +239,9 @@ fn run_perceptron(mut lines: std::str::Lines<'_>) -> Result<(), Box<dyn std::err
     let mode = match lines.next().ok_or("Missing perceptron mode.")? {
         "binary" => perceptron::Mode::Binary,
         "bipolar" => perceptron::Mode::Bipolar,
+        "bipolar_error" => perceptron::Mode::BipolarError,
         "band" => perceptron::Mode::ThresholdBand,
-        _ => return Err("Expected perceptron mode binary, bipolar or band.".into()),
+        _ => return Err("Expected perceptron mode binary, bipolar, bipolar_error or band.".into()),
     };
     let fields: Vec<&str> = lines
         .next()
@@ -331,6 +338,34 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
     let mut lines = input.lines();
     let protocol = lines.next().ok_or("Missing protocol.")?;
+    if protocol == "POWELL2_V1" {
+        return powell::run(lines, BufWriter::new(io::stdout().lock()));
+    }
+    if protocol == "NORMALIZED2_V1" {
+        return normalized_gradient::run(lines, BufWriter::new(io::stdout().lock()));
+    }
+    if protocol == "NELDER_MEAD2_V1" {
+        return nelder_mead::run(lines, BufWriter::new(io::stdout().lock()));
+    }
+    if protocol == "NEWTON2_V1" {
+        return newton2d::run(lines, BufWriter::new(io::stdout().lock()));
+    }
+    if protocol == "STEEPEST2_V1" {
+        return optimization::run_steepest(lines, BufWriter::new(io::stdout().lock()));
+    }
+    if protocol == "GRADIENT1_V1" || protocol == "NEWTON1_V1" {
+        return optimization::run(
+            lines,
+            BufWriter::new(io::stdout().lock()),
+            protocol == "NEWTON1_V1",
+        );
+    }
+    if protocol == "LECTURE08_V1" {
+        let request = lecture08::parse_request(lines)?;
+        let report = lecture08::calculate(&request)?;
+        lecture08::write_report(BufWriter::new(io::stdout().lock()), &report)?;
+        return Ok(());
+    }
     if protocol == "PERCEPTRON1" {
         return run_perceptron(lines);
     }

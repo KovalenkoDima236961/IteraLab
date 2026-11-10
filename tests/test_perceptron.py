@@ -13,7 +13,7 @@ from every_example_gui.backend import (
     export_trace,
     train,
 )
-from every_example_gui.perceptron import (
+from every_example_gui.algorithms.perceptron import (
     PerceptronRequest,
     PerceptronResult,
     perceptron_samples,

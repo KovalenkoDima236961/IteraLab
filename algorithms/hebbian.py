@@ -4,7 +4,7 @@ import csv
 from dataclasses import dataclass
 from pathlib import Path
 
-from .backend import Epoch, InputError, Prediction, Request, Sample, _vec
+from ..backend import Epoch, InputError, Prediction, Request, Sample, _vec
 
 
 @dataclass(frozen=True)

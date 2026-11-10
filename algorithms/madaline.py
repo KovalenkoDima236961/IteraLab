@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import math
 from pathlib import Path
 
-from .backend import InputError, Request, Sample, STATUS, _vec
+from ..backend import InputError, Request, Sample, STATUS, _vec
 
 MAX_HIDDEN_UNITS = 32
 

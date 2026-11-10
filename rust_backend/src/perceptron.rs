@@ -6,6 +6,7 @@ use super::{validate as validate_adaline, Model, Options as AdalineOptions, Samp
 pub enum Mode {
     Binary,
     Bipolar,
+    BipolarError,
     ThresholdBand,
 }
 
@@ -13,7 +14,7 @@ impl Mode {
     pub fn activate(self, net: f64, theta: f64) -> i8 {
         match self {
             Self::Binary => i8::from(net >= 0.0),
-            Self::Bipolar => super::activate(net),
+            Self::Bipolar | Self::BipolarError => super::activate(net),
             Self::ThresholdBand => {
                 if net > theta {
                     1
@@ -101,12 +102,16 @@ pub fn validate(samples: &[Sample], model: &Model, options: Options) -> Result<(
     for sample in samples {
         let valid = match options.mode {
             Mode::Binary => sample.target == 0.0 || sample.target == 1.0,
-            Mode::Bipolar | Mode::ThresholdBand => sample.target == -1.0 || sample.target == 1.0,
+            Mode::Bipolar | Mode::BipolarError | Mode::ThresholdBand => {
+                sample.target == -1.0 || sample.target == 1.0
+            }
         };
         if !valid {
             return Err(match options.mode {
                 Mode::Binary => "Binary perceptron targets must be 0 or 1.".into(),
-                Mode::Bipolar => "Bipolar perceptron targets must be -1 or +1.".into(),
+                Mode::Bipolar | Mode::BipolarError => {
+                    "Bipolar perceptron targets must be -1 or +1.".into()
+                }
                 Mode::ThresholdBand => "Threshold-band targets must be -1 or +1.".into(),
             });
         }
@@ -165,7 +170,7 @@ pub fn train(samples: &[Sample], initial: Model, options: Options) -> Result<Tra
             let output = options.mode.activate(net, options.theta);
             let error = sample.target - f64::from(output);
             let delta_bias = match options.mode {
-                Mode::Binary => options.alpha * error,
+                Mode::Binary | Mode::BipolarError => options.alpha * error,
                 Mode::Bipolar | Mode::ThresholdBand => {
                     if error != 0.0 {
                         options.alpha * sample.target

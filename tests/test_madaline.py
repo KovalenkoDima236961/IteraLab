@@ -14,7 +14,11 @@ from every_example_gui.backend import (
     preset_samples,
     train,
 )
-from every_example_gui.madaline import MadalineRequest, MadalineResult, weight_names
+from every_example_gui.algorithms.madaline import (
+    MadalineRequest,
+    MadalineResult,
+    weight_names,
+)
 
 
 def example(max_epochs=2):
@@ -57,12 +61,12 @@ class MadalineTests(unittest.TestCase):
         )
         r = train(request)
         s = r.steps[0]
-        self.assertEqual(s.selected, (True, False, True, False, True))
+        self.assertEqual(s.selected, (True, False, True, True, True))
         self.assertAlmostEqual(s.errors[4], -1.125)
         self.assertAlmostEqual(s.delta_biases[4], -0.225)
         self.assertAlmostEqual(r.epochs[0].max_change, 0.35)
         self.assertEqual(s.after_weights[2:4], (0.0, 0.0))
-        self.assertEqual(s.after_weights[6:8], (0.0, 0.0))
+        self.assertEqual(s.after_weights[6:8], (-0.2, 0.2))
         self.assertEqual(request.output_weights, (0.5,) * 5)
         self.assertEqual(request.output_bias, 2.0)
 
@@ -201,10 +205,10 @@ class MadalineTests(unittest.TestCase):
             self.assertEqual(r.steps[0].selected, selected)
         r = train(MadalineRequest((Sample((1.0,), -1.0),), ((0.0,), (0.0,))))
         self.assertEqual(r.steps[0].hidden_outputs, (1, 1))
-        self.assertEqual(r.steps[0].selected, (False, False))
+        self.assertEqual(r.steps[0].selected, (True, True))
         self.assertEqual(r.status, "weights_stable")
-        self.assertEqual(r.correct, 0)
-        self.assertEqual(r.sse, 4.0)
+        self.assertEqual(r.correct, 1)
+        self.assertEqual(r.sse, 0.0)
         correct = train(
             MadalineRequest(
                 samples, ((0.0, 0.0), (0.0, 0.0)), hidden_biases=(0.2, -0.3)

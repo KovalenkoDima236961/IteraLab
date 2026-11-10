@@ -9,7 +9,7 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from .backend import (
+from ..backend import (
     Cancelled,
     InputError,
     Request,
@@ -23,19 +23,22 @@ from .backend import (
     train,
     vector,
 )
-from .madaline import MAX_HIDDEN_UNITS, MadalineRequest, MadalineResult
+from ..algorithms.madaline import MAX_HIDDEN_UNITS, MadalineRequest, MadalineResult
 from . import madaline_view
-from .hebbian import HebbianRequest, HebbianResult
+from ..algorithms.hebbian import HebbianRequest, HebbianResult
 from . import hebbian_view
-from .perceptron import (
+from ..algorithms.perceptron import (
     BINARY,
     BIPOLAR,
+    BIPOLAR_ERROR,
     BAND,
     PerceptronRequest,
     PerceptronResult,
     perceptron_samples,
 )
 from . import perceptron_view
+from ..algorithms.lecture08 import OPTIONS as LECTURE08_OPTIONS
+from ..examples.learning import LEARNING_EXAMPLES
 
 BG = "#eef2f5"
 INK = "#182d40"
@@ -103,9 +106,11 @@ class ExamApp:
             value="Ready · load a preset or enter your training pairs"
         )
         self.preset = tk.StringVar(value="AND")
+        self.exercise_choice = tk.StringVar(value=next(iter(LEARNING_EXAMPLES)))
         self.encoding = tk.StringVar(value="Bipolar inputs")
         self.precision = tk.StringVar(value="10")
         self.algorithm = tk.StringVar(value="ADALINE")
+        self.workspace = tk.StringVar(value="Learning")
         self._active_algorithm = "ADALINE"
         self.perceptron_variant = tk.StringVar(value=BINARY)
         self.target_hint = tk.StringVar(
@@ -148,8 +153,8 @@ class ExamApp:
         root.bind("<Control-Return>", lambda _: self.start())
         if sys.platform == "darwin":
             root.bind("<Command-Return>", lambda _: self.start())
-        root.bind("<Alt-Left>", lambda _: self.go_step(self.step_index - 1))
-        root.bind("<Alt-Right>", lambda _: self.go_step(self.step_index + 1))
+        root.bind("<Alt-Left>", lambda _: self.navigate_step(-1))
+        root.bind("<Alt-Right>", lambda _: self.navigate_step(1))
         self.poll_job = root.after(60, self._poll)
 
     def _style(self):
@@ -202,7 +207,26 @@ class ExamApp:
             fg="#c0d4df",
             font=("Arial", 11),
         ).pack(side="left", padx=25)
+        navigation = ttk.Frame(self.root, padding=(24, 10))
+        navigation.pack(fill="x")
+        ttk.Label(navigation, text="WORKSPACE", style="Muted.TLabel").pack(
+            side="left", padx=(0, 14)
+        )
+        for label in ("Learning", "Optimization"):
+            ttk.Radiobutton(
+                navigation,
+                text=label,
+                value=label,
+                variable=self.workspace,
+                command=self.switch_workspace,
+            ).pack(side="left", padx=(0, 20))
+        ttk.Label(
+            navigation,
+            text="Switch at any time · inputs and completed results are retained",
+            style="Muted.TLabel",
+        ).pack(side="right")
         body = ttk.Frame(self.root, padding=(18, 16, 18, 8))
+        self.body = body
         body.pack(fill="both", expand=True)
         sidebar = ttk.Frame(body, width=325)
         sidebar.pack(side="left", fill="y", padx=(0, 18))
@@ -294,6 +318,7 @@ class ExamApp:
         self.algorithm_text = self._text(algorithm_tab)
         self._set_text(self.algorithm_text, ALGORITHM)
         footer = ttk.Frame(self.root, padding=(20, 4, 20, 10))
+        self.footer = footer
         footer.pack(fill="x")
         ttk.Label(footer, textvariable=self.status, style="Muted.TLabel").pack(
             side="left"
@@ -303,6 +328,12 @@ class ExamApp:
             text="Rust calculations · local desktop · no network",
             style="Muted.TLabel",
         ).pack(side="right")
+        from .lecture08_gui import Lecture08Panel
+
+        self.lecture08 = Lecture08Panel(self, self.root)
+        from .optimization_gui import OptimizationPanel
+
+        self.optimization = OptimizationPanel(self, self.root)
 
     def _form(self, parent):
         ttk.Label(parent, text="ALGORITHM", style="Section.TLabel").pack(anchor="w")
@@ -310,7 +341,8 @@ class ExamApp:
             parent,
             textvariable=self.algorithm,
             state="readonly",
-            values=("ADALINE", "MADALINE (MRI)", "Hebbian Learning", "Perceptron"),
+            values=("ADALINE", "MADALINE (MRI)", "Hebbian Learning", "Perceptron")
+            + LECTURE08_OPTIONS,
         )
         self.algorithm_box.pack(fill="x")
         self.algorithm_box.bind(
@@ -324,7 +356,7 @@ class ExamApp:
             self.perceptron_fields,
             textvariable=self.perceptron_variant,
             state="readonly",
-            values=(BINARY, BIPOLAR, BAND),
+            values=(BINARY, BIPOLAR, BIPOLAR_ERROR, BAND),
         )
         variant.pack(fill="x")
         variant.bind("<<ComboboxSelected>>", lambda _: self.change_perceptron_mode())
@@ -337,6 +369,15 @@ class ExamApp:
             parent, text="01  TRAINING PAIRS", style="Section.TLabel"
         )
         self.training_section.pack(anchor="w")
+        ttk.Combobox(
+            parent,
+            textvariable=self.exercise_choice,
+            values=tuple(LEARNING_EXAMPLES),
+            state="readonly",
+        ).pack(fill="x", pady=(0, 5))
+        ttk.Button(
+            parent, text="Load practical exercise", command=self.load_practical_example
+        ).pack(fill="x", pady=(0, 8))
         box = ttk.Combobox(
             parent,
             textvariable=self.preset,
@@ -751,7 +792,46 @@ class ExamApp:
         self.reset_output_defaults()
         self._dirty()
 
-    def switch_algorithm(self):
+    def switch_workspace(self):
+        if self.workspace.get() == "Optimization":
+            self.body.pack_forget()
+            self.footer.pack_forget()
+            self.lecture08.frame.pack_forget()
+            self.optimization.frame.pack(fill="both", expand=True)
+            self.optimization.update_header()
+        else:
+            self.switch_algorithm(restore=True)
+
+    def navigate_step(self, delta):
+        panel = (
+            self.optimization
+            if self.workspace.get() == "Optimization"
+            else self.lecture08
+            if self.algorithm.get() in LECTURE08_OPTIONS
+            else self
+        )
+        panel.go_step(panel.step_index + delta)
+
+    def switch_algorithm(self, *, restore=False):
+        self.workspace.set("Learning")
+        self.optimization.frame.pack_forget()
+        if self.algorithm.get() in LECTURE08_OPTIONS:
+            self.body.pack_forget()
+            self.footer.pack_forget()
+            self.lecture08.frame.pack(fill="both", expand=True)
+            self.lecture08.select(self.algorithm.get())
+            self.header_text.set(self.algorithm.get())
+            self.root.title(f"Exam lab · {self.algorithm.get()}")
+            return
+        if not self.body.winfo_manager():
+            self.lecture08.frame.pack_forget()
+            self.body.pack(fill="both", expand=True)
+            self.footer.pack(fill="x")
+            restore = True
+        if restore and self.algorithm.get() == self._active_algorithm:
+            self.header_text.set(f"{self.algorithm.get()}  /  STEP-BY-STEP WORKSHEET")
+            self.root.title(f"Exam lab · {self.algorithm.get()}")
+            return
         madaline = self.algorithm.get() == "MADALINE (MRI)"
         hebbian = self.algorithm.get() == "Hebbian Learning"
         perceptron = self.algorithm.get() == "Perceptron"
@@ -828,9 +908,13 @@ class ExamApp:
             return "binary"
         if self.perceptron_variant.get() == BIPOLAR:
             return "bipolar"
+        if self.perceptron_variant.get() == BIPOLAR_ERROR:
+            return "bipolar_error"
         if self.perceptron_variant.get() == BAND:
             return "band"
-        raise InputError("Choose binary, bipolar or threshold-band perceptron mode.")
+        raise InputError(
+            "Choose binary, bipolar sign, bipolar error-update or threshold-band mode."
+        )
 
     def change_perceptron_mode(self, *, reload=True):
         mode = self._perceptron_mode()
@@ -848,7 +932,7 @@ class ExamApp:
             "One row: x1, x2, …, target\nTargets: 0 or 1."
             if binary
             else "One row: x1, x2, …, target\nTargets and outputs: −1 or +1."
-            if mode == "bipolar"
+            if mode in ("bipolar", "bipolar_error")
             else "One row: x1, x2, …, target\nTargets: −1 or +1; output may be 0."
         )
         if reload:
@@ -905,6 +989,53 @@ class ExamApp:
             self.fields["bias2"].set("0")
             if self.algorithm.get() == "MADALINE (MRI)":
                 self.initialize(True)
+        finally:
+            self.loading = False
+        self._dirty()
+
+    def load_practical_example(self):
+        values = LEARNING_EXAMPLES[self.exercise_choice.get()]
+        self.algorithm.set(values["algorithm"])
+        self.switch_algorithm()
+        if values["algorithm"] == "Perceptron":
+            self.perceptron_variant.set(
+                {"binary": BINARY, "bipolar_error": BIPOLAR_ERROR, "band": BAND}[
+                    values["mode"]
+                ]
+            )
+            self.switch_algorithm()
+        self.loading = True
+        try:
+            self.preset.set("Custom")
+            self._known_data = values["data"]
+            self.data_input.delete("1.0", "end")
+            self.data_input.insert("1.0", self._known_data)
+            self.data_input.edit_modified(False)
+            self.encoding.set(
+                "Binary inputs"
+                if values["algorithm"] == "Perceptron"
+                else "Bipolar inputs"
+            )
+            if values["algorithm"] == "MADALINE (MRI)":
+                self.hidden_units.set("2")
+                self.resize_hidden_units()
+            for key, default in {
+                "weights": "0,0",
+                "bias": "0",
+                "weights2": "0,0",
+                "bias2": "0",
+                "alpha": "1",
+                "theta": "0",
+                "tolerance": "0.001",
+                "max_epochs": "100",
+                "output_weights": "0.5,0.5",
+                "output_bias": "0.5",
+            }.items():
+                self.fields[key].set(values.get(key, default))
+            if "weights" not in values:
+                self.fields["weights"].set(
+                    ",".join("0" for _ in parse_samples(values["data"])[0].inputs)
+                )
         finally:
             self.loading = False
         self._dirty()
@@ -1032,6 +1163,10 @@ class ExamApp:
         return request
 
     def start(self):
+        if self.workspace.get() == "Optimization":
+            return self.optimization.start()
+        if self.algorithm.get() in LECTURE08_OPTIONS:
+            return self.lecture08.start()
         if self.busy or self.closed:
             return
         try:
@@ -1604,6 +1739,8 @@ class ExamApp:
         )
 
     def close(self):
+        self.optimization.close()
+        self.lecture08.close()
         self.closed = True
         self.cancel_event.set()
         self.root.after_cancel(self.poll_job)

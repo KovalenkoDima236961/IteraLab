@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import math
 from pathlib import Path
 
-from .backend import (
+from ..backend import (
     Epoch,
     InputError,
     Prediction,
@@ -18,17 +18,25 @@ from .backend import (
 
 BINARY = "Binary (0/1)"
 BIPOLAR = "Bipolar (−1/+1)"
+BIPOLAR_ERROR = "Bipolar · error update"
 BAND = "Threshold band (−1/0/+1)"
-MODE_LABELS = {"binary": BINARY, "bipolar": BIPOLAR, "band": BAND}
+MODE_LABELS = {
+    "binary": BINARY,
+    "bipolar": BIPOLAR,
+    "bipolar_error": BIPOLAR_ERROR,
+    "band": BAND,
+}
 
 
 def perceptron_samples(name, bipolar_inputs=False, mode="binary"):
     samples = preset_samples(name, bipolar_inputs)
     if mode == "binary":
         return tuple(Sample(s.inputs, 1.0 if s.target == 1.0 else 0.0) for s in samples)
-    if mode in ("bipolar", "band"):
+    if mode in ("bipolar", "bipolar_error", "band"):
         return samples
-    raise InputError("Choose binary, bipolar or threshold-band perceptron mode.")
+    raise InputError(
+        "Choose binary, bipolar sign, bipolar error-update or threshold-band mode."
+    )
 
 
 @dataclass(frozen=True)
@@ -46,7 +54,7 @@ class PerceptronRequest:
     def validate(self):
         if self.mode not in MODE_LABELS:
             raise InputError(
-                "Choose binary, bipolar or threshold-band perceptron mode."
+                "Choose binary, bipolar sign, bipolar error-update or threshold-band mode."
             )
         if not math.isfinite(self.alpha) or not 0 < self.alpha <= 1:
             raise InputError("Perceptron learning rate must satisfy 0 < rate ≤ 1.")
@@ -62,7 +70,7 @@ class PerceptronRequest:
                 "Binary perceptron targets must be 0 or 1."
                 if self.mode == "binary"
                 else "Bipolar perceptron targets must be −1 or +1."
-                if self.mode == "bipolar"
+                if self.mode in ("bipolar", "bipolar_error")
                 else "Threshold-band targets must be −1 or +1."
             )
         canonical = tuple(

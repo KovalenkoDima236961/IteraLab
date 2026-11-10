@@ -15,7 +15,7 @@ from unittest.mock import patch
 class DesktopTests(unittest.TestCase):
     def setUp(self):
         import tkinter as tk
-        from every_example_gui.app import ExamApp
+        from every_example_gui.ui.app import ExamApp
 
         self.root = tk.Tk()
         self.app = ExamApp(self.root)
@@ -68,7 +68,7 @@ class DesktopTests(unittest.TestCase):
             ):
                 path = Path(directory) / name
                 with patch(
-                    "every_example_gui.app.filedialog.asksaveasfilename",
+                    "every_example_gui.ui.app.filedialog.asksaveasfilename",
                     return_value=str(path),
                 ):
                     method()
@@ -77,7 +77,7 @@ class DesktopTests(unittest.TestCase):
                     self.assertEqual(float(row["alpha"]), 0.2)
         self.assertIs(a.result, original)
         a.fields["tolerance"].set("-1")
-        with patch("every_example_gui.app.messagebox.showerror") as error:
+        with patch("every_example_gui.ui.app.messagebox.showerror") as error:
             a.start()
             error.assert_called_once()
         self.assertFalse(a.busy)
@@ -95,7 +95,7 @@ class DesktopTests(unittest.TestCase):
             path = Path(directory) / "training.csv"
             path.write_text("x1,x2,x3,target\n1,-1,1,-1\n", encoding="utf-8")
             with patch(
-                "every_example_gui.app.filedialog.askopenfilename",
+                "every_example_gui.ui.app.filedialog.askopenfilename",
                 return_value=str(path),
             ):
                 a.import_data()
@@ -128,7 +128,7 @@ class DesktopTests(unittest.TestCase):
         self.assertIn("cancelled", a.status.get())
 
     def test_madaline_switch_xor_worked_cases_exports_and_switch_back(self):
-        from every_example_gui.madaline import MadalineResult
+        from every_example_gui.algorithms.madaline import MadalineResult
 
         a = self.app
         a.algorithm.set("MADALINE (MRI)")
@@ -179,7 +179,7 @@ class DesktopTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "result.csv"
             with patch(
-                "every_example_gui.app.filedialog.asksaveasfilename",
+                "every_example_gui.ui.app.filedialog.asksaveasfilename",
                 return_value=str(path),
             ):
                 a.save_trace()
@@ -228,7 +228,7 @@ class DesktopTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "three.csv"
             with patch(
-                "every_example_gui.app.filedialog.asksaveasfilename",
+                "every_example_gui.ui.app.filedialog.asksaveasfilename",
                 return_value=str(path),
             ):
                 a.save_trace()
@@ -244,8 +244,8 @@ class DesktopTests(unittest.TestCase):
             variable.set(str(bias))
         a.start()
         self.wait_for_result()
-        self.assertEqual(a.result.steps[0].selected, (True, False, True, False, True))
-        self.assertIn("Selected units: Z1, Z3, Z5", a.worked_text.get("1.0", "end"))
+        self.assertEqual(a.result.steps[0].selected, (True, False, True, True, True))
+        self.assertIn("Selected units: Z1, Z3, Z4, Z5", a.worked_text.get("1.0", "end"))
         for units in (1, 32):
             a.hidden_units.set(str(units))
             a.resize_hidden_units()
@@ -257,13 +257,13 @@ class DesktopTests(unittest.TestCase):
             self.assertEqual(len(a.result.biases), units)
             self.assertEqual(a.result.correct, 1)
         a.hidden_units.set("0")
-        with patch("every_example_gui.app.messagebox.showerror") as error:
+        with patch("every_example_gui.ui.app.messagebox.showerror") as error:
             a.resize_hidden_units()
             error.assert_called_once()
         self.assertEqual(a.hidden_units.get(), "32")
 
     def test_hebbian_one_pass_worked_steps_verification_exports_and_switch_back(self):
-        from every_example_gui.hebbian import HebbianResult
+        from every_example_gui.algorithms.hebbian import HebbianResult
 
         a = self.app
         a.algorithm.set("Hebbian Learning")
@@ -312,7 +312,7 @@ class DesktopTests(unittest.TestCase):
             ):
                 path = Path(directory) / name
                 with patch(
-                    "every_example_gui.app.filedialog.asksaveasfilename",
+                    "every_example_gui.ui.app.filedialog.asksaveasfilename",
                     return_value=str(path),
                 ):
                     method()
@@ -373,7 +373,7 @@ class DesktopTests(unittest.TestCase):
         self.assertIn("incomplete", a.final_text.get("1.0", "end"))
 
     def test_perceptron_binary_and_band_workflows_exports_and_switch_back(self):
-        from every_example_gui.perceptron import BAND, PerceptronResult
+        from every_example_gui.algorithms.perceptron import BAND, PerceptronResult
 
         a = self.app
         a.algorithm.set("Perceptron")
@@ -420,7 +420,7 @@ class DesktopTests(unittest.TestCase):
             ):
                 path = Path(directory) / name
                 with patch(
-                    "every_example_gui.app.filedialog.asksaveasfilename",
+                    "every_example_gui.ui.app.filedialog.asksaveasfilename",
                     return_value=str(path),
                 ):
                     method()
@@ -449,7 +449,7 @@ class DesktopTests(unittest.TestCase):
         self,
     ):
         from every_example_gui.backend import InputError
-        from every_example_gui.perceptron import BINARY, BAND
+        from every_example_gui.algorithms.perceptron import BINARY, BAND
 
         a = self.app
         a.algorithm.set("Perceptron")
@@ -500,7 +500,7 @@ class DesktopTests(unittest.TestCase):
             path = Path(directory) / "binary.csv"
             path.write_text("x1,target\n0,0\n1,1\n", encoding="utf-8")
             with patch(
-                "every_example_gui.app.filedialog.askopenfilename",
+                "every_example_gui.ui.app.filedialog.askopenfilename",
                 return_value=str(path),
             ):
                 a.import_data()
@@ -523,7 +523,7 @@ class DesktopTests(unittest.TestCase):
         self.assertEqual(a.result.completed_epochs, 5)
         previous = a.result
         a.fields["alpha"].set("2")
-        with patch("every_example_gui.app.messagebox.showerror") as error:
+        with patch("every_example_gui.ui.app.messagebox.showerror") as error:
             a.start()
             error.assert_called_once()
         self.assertIs(a.result, previous)
@@ -539,7 +539,7 @@ class DesktopTests(unittest.TestCase):
         self.assertIn("No update was committed", a.worked_text.get("1.0", "end"))
 
     def test_bipolar_perceptron_sign_option_worked_steps_and_snapshot_exports(self):
-        from every_example_gui.perceptron import BIPOLAR, BAND
+        from every_example_gui.algorithms.perceptron import BIPOLAR, BAND
 
         a = self.app
         a.algorithm.set("Perceptron")
@@ -579,7 +579,7 @@ class DesktopTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "bipolar.csv"
             with patch(
-                "every_example_gui.app.filedialog.asksaveasfilename",
+                "every_example_gui.ui.app.filedialog.asksaveasfilename",
                 return_value=str(path),
             ):
                 a.save_trace()
