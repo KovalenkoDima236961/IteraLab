@@ -1,6 +1,6 @@
 <div align="center">
 
-# Exam Lab
+# IteraLab
 
 ### Learning and Optimization, Step by Step
 
