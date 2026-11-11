@@ -2,7 +2,7 @@
 
 ## Source inspection limitation
 
-`README.md` references `PRACTICAL_EXAMPLES_AUDIT.md`, but that file was absent
+The previous `README.md` referenced `PRACTICAL_EXAMPLES_AUDIT.md`, but that file was absent
 from this checkout when the CLI was implemented (including a repository-wide
 filename search). It could not be inspected, and no replacement practical audit
 has been invented. The existing Rust implementations, Python adapters,
