@@ -1,5 +1,3 @@
-"""Full-Hessian Newton formulas, substituted systems and diagnostics for the 2D view."""
-
 from ..algorithms.optimization import STATUS
 from .steepest_view import in_view
 

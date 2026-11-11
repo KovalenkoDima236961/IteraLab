@@ -1,0 +1,11 @@
+# 04 practical simplex, with explicitly selected branch and stopping rules.
+objective = x^2+2*y^2
+variant = standard
+stopping = function
+tolerance = 1e-6
+max_iterations = 200
+plot_bounds = -3, 3, -3, 3
+[simplex]
+2, 2
+2, 1
+1, 2

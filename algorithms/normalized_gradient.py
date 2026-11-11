@@ -1,5 +1,3 @@
-"""Normalized 2D gradient descent with a recorded numerical stationary line search."""
-
 import csv
 from dataclasses import dataclass
 import math

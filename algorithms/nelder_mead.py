@@ -1,5 +1,3 @@
-"""Immutable simplex snapshots and trial points for the supplied Nelder–Mead rule."""
-
 import csv
 from dataclasses import dataclass
 import math

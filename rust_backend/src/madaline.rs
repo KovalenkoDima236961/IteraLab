@@ -1,5 +1,3 @@
-//! MADALINE Rule I: configurable hidden ADALINE units and a fixed bipolar output unit.
-
 use super::{
     activate, validate as validate_adaline, Model as Unit, Options, Sample, MAX_COORDINATES,
 };

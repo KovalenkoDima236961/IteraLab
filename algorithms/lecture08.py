@@ -1,5 +1,3 @@
-"""Lecture 08 matrix requests/reports. Every numerical operation runs in Rust."""
-
 import csv
 from dataclasses import asdict, dataclass
 import json

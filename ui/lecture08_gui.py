@@ -1,5 +1,3 @@
-"""Separate Lecture 08 matrix workspace using the existing Tk styling/helpers."""
-
 from pathlib import Path
 import queue
 import threading

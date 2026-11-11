@@ -1,5 +1,3 @@
-"""Normalized-vector formulas, complete line-search tables and probe overlays."""
-
 import math
 from pathlib import Path
 import tkinter as tk

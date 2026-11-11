@@ -20,6 +20,63 @@ No third-party Python packages, Rust crates, network service, or API key is need
 
 ## Run
 
+### Rust CLI with input and report files
+
+See [CLI_COMMANDS.md](CLI_COMMANDS.md) for copy-and-paste commands for every
+algorithm, variant, and supported rate mode.
+
+The standalone CLI needs only Rust and works offline, without Python or Tk:
+
+```sh
+cargo run --offline --manifest-path every_example_gui/rust_backend/Cargo.toml -- \
+  nelder-mead \
+  --input every_example_gui/cli_templates/optimization/nelder-mead-slides-function.txt \
+  --output "Nelder Mead report.txt"
+
+cargo run --offline --manifest-path every_example_gui/rust_backend/Cargo.toml -- --list
+```
+
+Supported names are `nelder-mead`, `gradient-1d`, `steepest-fixed`,
+`steepest-line-search`, `normalized-gradient`, `powell`, `newton-2d`,
+`perceptron`, `adaline`, `hebb`, and `mcculloch-pitts`. Nelder–Mead selects
+`slides`/`standard` branches and `function`/`position` stopping explicitly;
+Perceptron selects `binary`, `bipolar`, `bipolar_error`, or `band` explicitly.
+Use `--help` or `--list` to discover names and modes.
+
+[CLI.md](CLI.md) documents the offline Cargo and direct `rustc` builds, every
+input field and its validation, text syntax, all 20 [runnable templates](cli_templates/),
+and commands for every variant. Files use named `key = value` settings followed
+by numeric sections such as `[samples]` or `[simplex]`, with `#` comments.
+Applicable methods require explicit `learning_rate_mode = provided` plus a
+`learning_rate`, or supported `calculated` mode. Calculated fixed gradient rates
+use `1/lambda_max(H)` only for certified positive-definite quadratics; sequential
+ADALINE uses `1/max(1+||x||²)` including bias. Perceptron and Hebb require provided
+rates. Line-search probes remain separate from accepted steps; methods without
+a learning rate reject those settings. See the [rules and limitations](CLI.md#learning-rate-selection).
+
+For the lecture's **new optimized step each iteration**, use
+`steepest-line-search` with `cli_templates/optimization/steepest-line-search.txt`.
+The `steepest-fixed` calculated template selects one fixed rate before the run;
+it is a distinct variant. See [the distinction and retained lecture differences](CLI.md#steepest-descent-with-an-optimized-step).
+
+The lecture's **gradient method with a normalized vector** is separately
+selectable as `normalized-gradient`, using
+`cli_templates/optimization/normalized-gradient.txt`. It recomputes
+`S=-gradient/||gradient||` and finds a new scalar `gamma` by line search each
+iteration. See [the formulas and example](CLI.md#gradient-method-with-a-normalized-vector).
+
+Reports include settings, rate selection, literal backend status and reason,
+final results, and the complete labelled backend trace at full precision.
+Exit `0` means a complete report was saved, including budget/numerical stops;
+exit `1` means an invocation, input, or file-operation error (written to stderr).
+Validation precedes output replacement, and reports use a temporary file plus
+rename. With **no arguments**, the existing GUI stdin/stdout protocol remains
+unchanged and performs no CLI file reads/writes. No mathematical module was
+modified. [Review notes](CLI_REVIEW_NOTES.md) record that the referenced practical
+audit file is absent from this checkout.
+
+### Desktop GUI
+
 Requires **Python 3.10+ with Tk** and **Rust (`rustc` on PATH)**. From `math`:
 
 ```sh
@@ -41,6 +98,9 @@ every_example_gui/
 ├── algorithms/      # Method-specific requests, results, parsing and CSV exports
 ├── ui/              # Tk workspaces, worked steps, tables and plots
 ├── examples/        # Practical exercise inputs (learning.py)
+├── cli_templates/   # Runnable .txt inputs for every CLI variant and rate mode
+├── CLI.md           # CLI fields, rate rules, reports and all template commands
+├── CLI_REVIEW_NOTES.md # Source-inspection limitations and retained conventions
 ├── rust_backend/    # Numerical implementations and Rust tests
 │   ├── Cargo.toml
 │   └── src/
@@ -860,6 +920,10 @@ in magnitude. Each compiler/training process has a two-minute timeout.
 - `rust_backend/src/powell.rs`: the supplied three-search direction-shift cycle,
   derivative-free Brent line minimization, cycle stopping tests and full trial records.
 - `rust_backend/src/main.rs`: validated line protocol for the Python adapter.
+- `rust_backend/src/cli.rs`, `cli_expression.rs`: explicit file CLI, strict input
+  parsing, parameter selection, shared dispatch and complete text reports.
+- `rust_backend/tests/cli.rs`, `tests/test_cli.py`: all-template CLI verification,
+  selected-rate checks, file errors and full-trace comparisons with GUI adapters.
 - `backend.py`: immutable run data, Rust build/process management, CSV exports.
 - `ui/app.py`: interface, substituted formulas, navigation and canvas charts.
 - `algorithms/madaline.py`, `ui/madaline_view.py`: MADALINE run data, protocol, CSV and worked views.
@@ -886,6 +950,7 @@ in magnitude. Each compiler/training process has a two-minute timeout.
   modules and worksheet views without moving calculation loops into Python.
 
 ```sh
+cargo test --offline --manifest-path every_example_gui/rust_backend/Cargo.toml
 cargo test --offline --lib --manifest-path every_example_gui/rust_backend/Cargo.toml
 cargo test --offline --bin exam-adaline lecture08::tests --manifest-path every_example_gui/rust_backend/Cargo.toml
 python3 -m unittest discover -s every_example_gui/tests -v

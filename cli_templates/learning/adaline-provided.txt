@@ -1,0 +1,12 @@
+# 07 pp3-4 bipolar AND, original row order and two full epochs.
+learning_rate_mode = provided
+learning_rate = 0.2
+initial_weights = 0, 0
+initial_bias = 0
+tolerance = 0.001
+max_epochs = 2
+[samples]
+1, 1, 1
+1, -1, -1
+-1, 1, -1
+-1, -1, -1

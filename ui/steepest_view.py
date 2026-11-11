@@ -1,5 +1,3 @@
-"""Two-dimensional steepest-descent worksheet and native Tk plots."""
-
 import math
 
 from ..algorithms.optimization import STATUS

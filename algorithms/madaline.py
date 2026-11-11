@@ -1,5 +1,3 @@
-"""MADALINE Rule I run data and protocol. Numerical operations execute in Rust."""
-
 import csv
 from dataclasses import dataclass
 import math

@@ -1,5 +1,3 @@
-"""Shared process control and ADALINE data; numerical calculations live in Rust."""
-
 from dataclasses import dataclass
 import csv
 import hashlib

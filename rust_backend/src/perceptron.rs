@@ -1,5 +1,3 @@
-//! Binary, bipolar sign, and threshold-band perceptron rules.
-
 use super::{validate as validate_adaline, Model, Options as AdalineOptions, Sample};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

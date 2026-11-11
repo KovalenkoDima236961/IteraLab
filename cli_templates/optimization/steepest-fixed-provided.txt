@@ -1,0 +1,9 @@
+# CV5 fixed gradient example. Calculated H eigenvalues are 5 +/- sqrt(2).
+objective = 2*x^2+x*y+3*y^2-4*x+2*y
+x0 = 0
+y0 = 0
+learning_rate_mode = provided
+learning_rate = 0.125
+tolerance = 1e-6
+max_iterations = 200
+plot_bounds = -2, 3, -2, 2

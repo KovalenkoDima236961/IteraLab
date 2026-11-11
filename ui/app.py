@@ -1,5 +1,3 @@
-"""Tk worksheet. Only the main thread touches Tk; a worker owns Rust processes."""
-
 import math
 from pathlib import Path
 import queue

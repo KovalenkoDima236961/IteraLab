@@ -1,5 +1,3 @@
-//! Supervised Hebbian learning: zero initialization, one ordered pass, then verification.
-
 use super::{activate, validate as validate_adaline, Epoch, Model, Options, Sample};
 
 #[derive(Debug)]

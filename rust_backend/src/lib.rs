@@ -1,6 +1,3 @@
-//! Online ADALINE, steps 0–6 of the supplied worksheet.
-//! Thresholding is for display/prediction only; learning always uses linear net input.
-
 pub mod hebbian;
 pub mod madaline;
 pub mod perceptron;

@@ -1,0 +1,8 @@
+# Existing parabola preset: x0=4. Calculated rate is 1/2.
+objective = x^2
+x0 = 4
+learning_rate_mode = provided
+learning_rate = 0.1
+tolerance = 1e-6
+max_iterations = 200
+plot_bounds = -5, 5

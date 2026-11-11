@@ -1,5 +1,3 @@
-"""Optimization workspace inside the single Exam lab Tk window."""
-
 import math
 from pathlib import Path
 import queue

@@ -1,5 +1,3 @@
-"""Worked calculations for binary, bipolar sign, and threshold-band perceptrons."""
-
 from ..backend import STATUS
 from ..algorithms.perceptron import MODE_LABELS
 

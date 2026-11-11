@@ -1,0 +1,7 @@
+# 04 practical example, full Hessian and existing gradient stopping test.
+objective = x^2+2*y^2
+x0 = 2
+y0 = 2
+tolerance = 1e-6
+max_iterations = 200
+plot_bounds = -3, 3, -3, 3

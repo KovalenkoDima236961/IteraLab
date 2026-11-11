@@ -1,5 +1,3 @@
-"""Safe objectives and immutable Rust optimization results."""
-
 import ast
 import csv
 from dataclasses import dataclass

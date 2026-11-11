@@ -1,0 +1,16 @@
+# CV6 XOR network: OR, NAND, AND. Each row: x1, x2, neuron1, neuron2, neuron3.
+thresholds = 1, -1, 2
+[patterns]
+1, 1
+1, 0
+0, 1
+0, 0
+[weights]
+1, 1, 0, 0, 0
+-1, -1, 0, 0, 0
+0, 0, 1, 1, 0
+[expected]
+1, 0, 0
+1, 1, 1
+1, 1, 1
+0, 1, 0

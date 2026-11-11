@@ -1,5 +1,3 @@
-//! Literal slide: reflection, expansion, inside-only contraction, then shrink.
-
 use crate::optimization::{compile_variables, evaluate_value, Instruction};
 use std::io::Write;
 

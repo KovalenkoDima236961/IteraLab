@@ -1,5 +1,3 @@
-"""Fixed-step steepest gradient descent in two dimensions; Rust owns the numerics."""
-
 import csv
 from dataclasses import dataclass
 import math

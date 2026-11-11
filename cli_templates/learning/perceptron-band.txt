@@ -1,0 +1,13 @@
+# Existing AND preset; preserve pattern order and activation/update mode.
+mode = band
+learning_rate_mode = provided
+learning_rate = 1
+initial_weights = 0, 0
+initial_bias = 0
+max_epochs = 100
+theta = 0.2
+[samples]
+1,1,1
+0,1,-1
+1,0,-1
+0,0,-1

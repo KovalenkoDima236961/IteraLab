@@ -1,5 +1,3 @@
-"""Powell cycle substitutions, line-search inspection, and direction overlays."""
-
 import math
 from pathlib import Path
 import tkinter as tk

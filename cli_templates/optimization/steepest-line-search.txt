@@ -1,0 +1,11 @@
+# 05/CV5 practical example; initial_step is a search probe, not a fixed rate.
+# Each iteration uses d=-gradient and searches for phi'(alpha)=0 in phi(alpha)=f(X+alpha*d).
+objective = 2*x^2+x*y+3*y^2-4*x+2*y
+x0 = 0
+y0 = 0
+tolerance = 1e-6
+max_iterations = 200
+initial_step = 1
+line_tolerance = 1e-10
+max_line_evaluations = 256
+plot_bounds = -2, 6, -2, 6

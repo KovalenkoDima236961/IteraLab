@@ -1,5 +1,3 @@
-"""MADALINE worksheet presentation; training and predictions come from Rust."""
-
 from ..backend import STATUS
 from ..algorithms.madaline import weight_names
 

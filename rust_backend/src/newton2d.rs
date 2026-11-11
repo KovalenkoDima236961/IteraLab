@@ -1,5 +1,3 @@
-//! Undamped Newton in 2D, using the complete symmetric Hessian and old-point gradient.
-
 use crate::optimization::{compile_variables, Instruction};
 use std::io::Write;
 

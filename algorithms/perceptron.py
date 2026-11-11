@@ -1,5 +1,3 @@
-"""Perceptron variants, immutable run data, protocol and full-precision CSV exports."""
-
 import csv
 from dataclasses import dataclass
 import math

@@ -1,5 +1,3 @@
-"""Full-Hessian Newton requests/results. All derivative and step calculations use Rust."""
-
 import csv
 from dataclasses import dataclass
 import math

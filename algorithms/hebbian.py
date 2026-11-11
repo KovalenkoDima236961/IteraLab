@@ -1,5 +1,3 @@
-"""Hebbian worksheet data and I/O. The single training pass executes in Rust."""
-
 import csv
 from dataclasses import dataclass
 from pathlib import Path

@@ -1,5 +1,3 @@
-"""The lecture's 2D Powell cycle, immutable scalar traces and complete exports."""
-
 import csv
 from dataclasses import dataclass
 import math

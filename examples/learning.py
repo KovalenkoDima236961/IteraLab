@@ -1,5 +1,3 @@
-"""Editable learning inputs transcribed from practical_examples (no answers)."""
-
 LEARNING_EXAMPLES = {
     "06 p8 · Hebbian AND": dict(
         algorithm="Hebbian Learning",

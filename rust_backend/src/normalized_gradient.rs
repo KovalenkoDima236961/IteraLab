@@ -1,5 +1,3 @@
-//! S=-gradient/||gradient||; numerically solve phi'(gamma)=0, then P_next=P+gamma*S.
-
 use crate::optimization::GradientEvaluator;
 use std::io::Write;
 

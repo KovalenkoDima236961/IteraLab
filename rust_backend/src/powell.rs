@@ -1,4 +1,3 @@
-//! The supplied 2D direction-shift Powell cycle, with derivative-free line minima.
 use crate::optimization::{compile_variables, evaluate_value, Instruction};
 use std::io::Write;
 

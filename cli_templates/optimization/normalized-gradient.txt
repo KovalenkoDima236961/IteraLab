@@ -1,0 +1,12 @@
+# 05/CV5 practical example; initial_step is a search probe, not a fixed rate.
+# Slide: S_k=-gradient(f)(P_k)/||gradient(f)(P_k)||; phi(gamma)=f(P_k+gamma*S_k).
+# Each iteration searches for phi'(gamma)=0, then commits P_(k+1)=P_k+gamma_k*S_k.
+objective = x^2-4*x+y^2-y-x*y
+x0 = 5
+y0 = 5
+tolerance = 1e-6
+max_iterations = 200
+initial_step = 1
+line_tolerance = 1e-10
+max_line_evaluations = 256
+plot_bounds = -2, 6, -2, 6

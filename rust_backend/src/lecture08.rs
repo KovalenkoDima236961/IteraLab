@@ -1,5 +1,3 @@
-//! Lecture 08 matrix tools. Independent of the existing neuron training algorithms.
-
 use std::io::Write;
 
 pub type Matrix = Vec<Vec<f64>>;

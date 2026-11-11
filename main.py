@@ -1,5 +1,3 @@
-"""Run from any directory: python3 /path/to/every_example_gui/main.py."""
-
 from pathlib import Path
 import sys
 

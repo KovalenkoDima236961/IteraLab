@@ -1,5 +1,3 @@
-//! Gradient and Newton methods, following the supplied one- and two-dimensional slides.
-
 use std::io::Write;
 
 #[derive(Clone, Copy)]

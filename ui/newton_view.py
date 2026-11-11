@@ -1,5 +1,3 @@
-"""Newton's slide, numerical substitutions and stopping diagnostics."""
-
 NOTES = """NEWTON'S METHOD · ONE DIMENSION · SUPPLIED ALGORITHM
 
 Inputs: f(x), f′(x), f″(x), starting estimate x₀, tolerance ε, and Nmax.

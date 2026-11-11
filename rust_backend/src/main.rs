@@ -1,3 +1,5 @@
+mod cli;
+mod cli_expression;
 #[path = "lib.rs"]
 mod core;
 mod lecture08;
@@ -60,6 +62,7 @@ fn integers<T: std::fmt::Display>(values: &[T]) -> String {
 fn run_madaline(
     mut lines: std::str::Lines<'_>,
     options: Options,
+    mut out: impl Write,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use core::madaline;
     let units: usize = lines.next().ok_or("Missing hidden unit count.")?.parse()?;
@@ -89,7 +92,6 @@ fn run_madaline(
         },
         options,
     )?;
-    let mut out = BufWriter::new(io::stdout().lock());
     let (failed_epoch, failed_pattern) = result.failed_at.unwrap_or((0, 0));
     writeln!(
         out,
@@ -165,7 +167,10 @@ fn run_madaline(
     Ok(())
 }
 
-fn run_hebbian(mut lines: std::str::Lines<'_>) -> Result<(), Box<dyn std::error::Error>> {
+fn run_hebbian(
+    mut lines: std::str::Lines<'_>,
+    mut out: impl Write,
+) -> Result<(), Box<dyn std::error::Error>> {
     use core::hebbian;
     let eta: f64 = lines
         .next()
@@ -173,7 +178,6 @@ fn run_hebbian(mut lines: std::str::Lines<'_>) -> Result<(), Box<dyn std::error:
         .parse()?;
     let samples = samples(lines)?;
     let result = hebbian::train(&samples, eta)?;
-    let mut out = BufWriter::new(io::stdout().lock());
     let (failed_epoch, failed_pattern) = result.failed_at.unwrap_or((0, 0));
     writeln!(
         out,
@@ -234,7 +238,10 @@ fn run_hebbian(mut lines: std::str::Lines<'_>) -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
-fn run_perceptron(mut lines: std::str::Lines<'_>) -> Result<(), Box<dyn std::error::Error>> {
+fn run_perceptron(
+    mut lines: std::str::Lines<'_>,
+    mut out: impl Write,
+) -> Result<(), Box<dyn std::error::Error>> {
     use core::perceptron;
     let mode = match lines.next().ok_or("Missing perceptron mode.")? {
         "binary" => perceptron::Mode::Binary,
@@ -263,7 +270,6 @@ fn run_perceptron(mut lines: std::str::Lines<'_>) -> Result<(), Box<dyn std::err
     };
     let samples = samples(lines)?;
     let result = perceptron::train(&samples, initial, options)?;
-    let mut out = BufWriter::new(io::stdout().lock());
     let (failed_epoch, failed_pattern) = result.failed_at.unwrap_or((0, 0));
     writeln!(
         out,
@@ -336,41 +342,42 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     if input.len() > 1_048_576 {
         return Err("Request is too large.".into());
     }
+    dispatch(&input, BufWriter::new(io::stdout().lock()))
+}
+
+// Both entry points use exactly the same numerical dispatch and serializers.
+fn dispatch(input: &str, mut out: impl Write) -> Result<(), Box<dyn std::error::Error>> {
     let mut lines = input.lines();
     let protocol = lines.next().ok_or("Missing protocol.")?;
     if protocol == "POWELL2_V1" {
-        return powell::run(lines, BufWriter::new(io::stdout().lock()));
+        return powell::run(lines, out);
     }
     if protocol == "NORMALIZED2_V1" {
-        return normalized_gradient::run(lines, BufWriter::new(io::stdout().lock()));
+        return normalized_gradient::run(lines, out);
     }
     if protocol == "NELDER_MEAD2_V1" {
-        return nelder_mead::run(lines, BufWriter::new(io::stdout().lock()));
+        return nelder_mead::run(lines, out);
     }
     if protocol == "NEWTON2_V1" {
-        return newton2d::run(lines, BufWriter::new(io::stdout().lock()));
+        return newton2d::run(lines, out);
     }
     if protocol == "STEEPEST2_V1" {
-        return optimization::run_steepest(lines, BufWriter::new(io::stdout().lock()));
+        return optimization::run_steepest(lines, out);
     }
     if protocol == "GRADIENT1_V1" || protocol == "NEWTON1_V1" {
-        return optimization::run(
-            lines,
-            BufWriter::new(io::stdout().lock()),
-            protocol == "NEWTON1_V1",
-        );
+        return optimization::run(lines, out, protocol == "NEWTON1_V1");
     }
     if protocol == "LECTURE08_V1" {
         let request = lecture08::parse_request(lines)?;
         let report = lecture08::calculate(&request)?;
-        lecture08::write_report(BufWriter::new(io::stdout().lock()), &report)?;
+        lecture08::write_report(out, &report)?;
         return Ok(());
     }
     if protocol == "PERCEPTRON1" {
-        return run_perceptron(lines);
+        return run_perceptron(lines, out);
     }
     if protocol == "HEBBIAN1" {
-        return run_hebbian(lines);
+        return run_hebbian(lines, out);
     }
     if protocol != "ADALINE1" && protocol != "MADALINE2" {
         return Err("Expected ADALINE1, MADALINE2, HEBBIAN1 or PERCEPTRON1 request.".into());
@@ -389,13 +396,12 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         max_epochs: fields[2].parse()?,
     };
     if protocol == "MADALINE2" {
-        return run_madaline(lines, options);
+        return run_madaline(lines, options, out);
     }
     let weights = numbers(lines.next().ok_or("Missing weights.")?)?;
     let bias = lines.next().ok_or("Missing bias.")?.parse()?;
     let samples = samples(lines)?;
     let result = core::train(&samples, Model { weights, bias }, options)?;
-    let mut out = BufWriter::new(io::stdout().lock());
     let (failed_epoch, failed_pattern) = result.failed_at.unwrap_or((0, 0));
     writeln!(
         out,
@@ -460,7 +466,12 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn main() {
-    if let Err(error) = run() {
+    let result = if std::env::args_os().len() == 1 {
+        run()
+    } else {
+        cli::run()
+    };
+    if let Err(error) = result {
         eprintln!("{error}");
         std::process::exit(1);
     }

@@ -1,5 +1,3 @@
-"""Literal Nelder–Mead branch substitutions and simplex/trial-point overlays."""
-
 from collections import Counter
 
 from ..algorithms.optimization import STATUS
